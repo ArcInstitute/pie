@@ -6,19 +6,15 @@ errors.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
-from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
-from hydra import compose, initialize_config_dir
-from hydra.core.global_hydra import GlobalHydra
-from omegaconf import DictConfig, OmegaConf
+from pydantic import field_validator
 
 from pie.data.datamodule import DataConfig
 from pie.model.pie import ModelConfig
-from pie.utils import REPO_ROOT, StrictModel, compose_config, resolve_path, to_portable
-
-CONFIG_DIR: Path = REPO_ROOT / "configs"
+from pie.utils import StrictModel, compose_config, resolve_path, to_portable
 
 
 class TrainerConfig(StrictModel):
@@ -84,23 +80,6 @@ class TrainConfig(StrictModel):
     logger: LoggerConfig
 
 
-def config_to_dict(cfg: DictConfig) -> dict[str, Any]:
-    """Resolve interpolations (a `???` left anywhere is an error) and drop the `hydra` node."""
-    container = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
-    if not isinstance(container, dict):
-        raise TypeError("a run config must be a mapping")
-    container.pop("hydra", None)
-    return {str(key): value for key, value in container.items()}
-
-
-def _compose(config_name: str, overrides: Sequence[str]) -> dict[str, Any]:
-    """Compose configs/<config_name>.yaml with Hydra overrides into plain resolved data."""
-    GlobalHydra.instance().clear()
-    with initialize_config_dir(config_dir=str(CONFIG_DIR), version_base="1.3"):
-        cfg = compose(config_name=config_name, overrides=list(overrides))
-        return config_to_dict(cfg)
-
-
 def compose_train_config(overrides: Sequence[str]) -> TrainConfig:
     """Compose configs/train.yaml (an experiment overlay comes in via `experiment=<name>`)."""
     return TrainConfig.model_validate(compose_config("train", overrides))
@@ -132,3 +111,53 @@ def portable_train_config(cfg: TrainConfig) -> TrainConfig:
 def resolved_train_config(cfg: TrainConfig) -> TrainConfig:
     """Inverse of portable_train_config: every path through pie.utils.resolve_path."""
     return _map_paths(cfg, _resolved)
+
+
+_ROW_SET = re.compile(r"[A-Za-z0-9_\-][A-Za-z0-9_.\-]*")
+
+
+class EvalConfig(StrictModel):
+    """pie-eval (configs/eval.yaml)."""
+
+    experiment_name: str
+    run_dir: str
+    ckpt: Literal["best_auprc", "last"]
+    split_path: str  # a split file, e.g. data/splits/replogle_xdataset/test_seen.json
+    row_set: str  # output dir name under <run_dir>/eval/
+    preprocessed_dirs: list[str] | None  # None = the checkpoint's training dirs
+    save_predictions: bool
+    overwrite: bool
+    device: str
+    batch_size: int
+
+    @field_validator("row_set")
+    @classmethod
+    def check_row_set(cls, value: str) -> str:
+        if not _ROW_SET.fullmatch(value):
+            raise ValueError(f"row_set must be a single directory name, got {value!r}")
+        return value
+
+
+class InferConfig(StrictModel):
+    """pie-infer (configs/infer.yaml)."""
+
+    experiment_name: str
+    run_dir: str
+    ckpt: Literal["best_auprc", "last"]
+    rows_kind: Literal["split", "query"]
+    rows_path: str
+    preprocessed_dirs: list[str] | None
+    output_path: str  # predictions.parquet path
+    overwrite: bool
+    device: str
+    batch_size: int
+
+
+def compose_eval_config(overrides: Sequence[str]) -> EvalConfig:
+    """Compose configs/eval.yaml (+overrides), resolve, validate."""
+    return EvalConfig.model_validate(compose_config("eval", overrides))
+
+
+def compose_infer_config(overrides: Sequence[str]) -> InferConfig:
+    """Compose configs/infer.yaml (+overrides), resolve, validate."""
+    return InferConfig.model_validate(compose_config("infer", overrides))

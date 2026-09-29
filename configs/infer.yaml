@@ -1,0 +1,14 @@
+# pie-infer: predict query rows (or a split file) with a checkpoint.
+defaults:
+  - _self_
+
+experiment_name: ???
+run_dir: ${oc.env:PIE_RUNS_ROOT}/${experiment_name}
+ckpt: best_auprc
+rows_kind: query
+rows_path: ???
+preprocessed_dirs: null
+output_path: ${run_dir}/infer/predictions.parquet
+overwrite: false
+device: cuda
+batch_size: 16

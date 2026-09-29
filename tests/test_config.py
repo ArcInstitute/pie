@@ -10,12 +10,13 @@ from omegaconf.errors import MissingMandatoryValue
 from pydantic import BaseModel, ValidationError
 
 from pie.config import (
-    CONFIG_DIR,
     LoggerConfig,
     OptimizerConfig,
     SchedulerConfig,
     TrainConfig,
     TrainerConfig,
+    compose_eval_config,
+    compose_infer_config,
     compose_train_config,
     portable_train_config,
     resolved_train_config,
@@ -23,7 +24,7 @@ from pie.config import (
 from pie.data.datamodule import DataConfig
 from pie.data.evidence import EvidenceConfig
 from pie.model.pie import EvidenceModelConfig, ModelConfig, TemperatureConfig
-from pie.utils import REPO_ROOT
+from pie.utils import CONFIG_DIR, REPO_ROOT
 from tests.fixtures import TinyData, required_train_overrides, set_run_env
 
 
@@ -211,3 +212,66 @@ def test_resolve_steps_matches_both_recipes() -> None:
     assert sched.resolve_steps(5000) == (250, 4250, 500)
     assert sched.resolve_steps(10000) == (500, 4250, 5250)
     assert sched.resolve_steps(10) == (1, 4250, 1)
+
+
+def test_eval_config_composes_with_its_defaults(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
+    cfg = compose_eval_config(
+        [
+            "experiment_name=replogle_wdataset/k562",
+            "split_path=data/splits/replogle_wdataset/unseen_ctx/k562/test.json",
+            "row_set=unseen_ctx",
+        ]
+    )
+    assert cfg.run_dir == f"{tmp_path}/replogle_wdataset/k562"
+    assert cfg.ckpt == "best_auprc"
+    assert cfg.preprocessed_dirs is None
+    assert cfg.save_predictions is False
+    assert cfg.overwrite is False
+    assert (cfg.device, cfg.batch_size) == ("cuda", 16)
+
+
+def test_eval_config_requires_split_and_row_set(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
+    with pytest.raises(MissingMandatoryValue):
+        compose_eval_config(["experiment_name=x", "split_path=s.json"])
+
+
+def test_eval_config_rejects_unknown_keys_and_nested_row_sets(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
+    base = ["experiment_name=x", "split_path=s.json"]
+    with pytest.raises(ValidationError):
+        compose_eval_config([*base, "row_set=r", "+bogus=1"])
+    with pytest.raises(ValidationError, match="row_set"):
+        compose_eval_config([*base, "row_set=a/b"])
+
+
+def test_infer_config_composes_with_its_defaults(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
+    cfg = compose_infer_config(["experiment_name=replogle_xdataset", "rows_path=query.json"])
+    assert cfg.rows_kind == "query"
+    assert cfg.run_dir == f"{tmp_path}/replogle_xdataset"
+    assert cfg.output_path == f"{tmp_path}/replogle_xdataset/infer/predictions.parquet"
+    assert cfg.overwrite is False
+    assert (cfg.ckpt, cfg.device, cfg.batch_size) == ("best_auprc", "cuda", 16)
+
+
+@pytest.mark.parametrize("name", ["eval.yaml", "infer.yaml"])
+def test_eval_and_infer_yaml_have_no_hydra_node(name: str) -> None:
+    assert "hydra" not in OmegaConf.load(CONFIG_DIR / name)
+
+
+def test_infer_config_rejects_an_unknown_rows_kind(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
+    with pytest.raises(ValidationError):
+        compose_infer_config(["experiment_name=x", "rows_path=q.json", "rows_kind=table"])

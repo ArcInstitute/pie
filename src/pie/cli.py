@@ -53,6 +53,48 @@ def train_main(argv: list[str] | None = None) -> int:
     return _launch(argv, _TRAIN_USAGE, run, require=ENV_ROOTS)
 
 
+_EVAL_USAGE = """\
+usage: pie-eval experiment_name=<name> split_path=<split.json> row_set=<name> [<key>=<value> ...]
+
+Score a checkpoint (ckpt=best_auprc|last) on a split file; writes
+<run_dir>/eval/<row_set>/metrics_<ckpt>.csv and granular_<ckpt>.csv. Settings come from
+configs/eval.yaml; save_predictions=true also writes the predictions, overwrite=true replaces
+existing tables. Relative paths are relative to the repository root.
+"""
+
+_INFER_USAGE = """\
+usage: pie-infer experiment_name=<name> rows_kind=query|split rows_path=<file> [<key>=<value> ...]
+
+Predict p_de, lfc_pred and delta_p_pred per (context, perturbation) with a checkpoint and write
+one parquet (output_path). Settings come from configs/infer.yaml; preprocessed_dirs=[...] points
+at other preprocessed dirs (for example a controls-only dir), overwrite=true replaces the file.
+"""
+
+
+def eval_main(argv: list[str] | None = None) -> int:
+    """pie-eval: score a checkpoint on a split file; writes <run_dir>/eval/<row_set>/."""
+
+    def run(overrides: list[str]) -> None:
+        from pie.config import compose_eval_config
+        from pie.evaluate import run_eval
+
+        run_eval(compose_eval_config(overrides))
+
+    return _launch(argv, _EVAL_USAGE, run, require=ENV_ROOTS)
+
+
+def infer_main(argv: list[str] | None = None) -> int:
+    """pie-infer: predict query rows or a split file; writes one predictions parquet."""
+
+    def run(overrides: list[str]) -> None:
+        from pie.config import compose_infer_config
+        from pie.infer import run_infer
+
+        run_infer(compose_infer_config(overrides))
+
+    return _launch(argv, _INFER_USAGE, run, require=ENV_ROOTS)
+
+
 def _launch(
     argv: Sequence[str] | None,
     usage: str,
