@@ -1,0 +1,12 @@
+# @package _global_
+# Replogle (K562, RPE1, HepG2, Jurkat); h5ad cell lines map onto the lower-case label contexts,
+# and obs gene_id holds each perturbation's Ensembl id.
+name: replogle
+obs:
+  context_col: cell_line
+  pert_col: gene
+  pert_id_col: gene_id
+  control_label: non-targeting
+  context_map: {K562: k562, RPE1: rpe1, hepg2: hepg2, jurkat: jurkat}
+label:
+  context_case: lower

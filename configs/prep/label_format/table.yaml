@@ -1,0 +1,10 @@
+# @package _global_
+# PIE label tables: one row per (context, perturbation, gene), linear fold change.
+label:
+  context_from: column
+  context_col: context
+  pert_col: pert
+  gene_col: gene_symbol
+  fc_col: fold_change
+  fc_space: linear
+  fdr_col: fdr

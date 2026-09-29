@@ -1,0 +1,14 @@
+# @package _global_
+# ARC VCC 25 (train and val files). DE parquets are named by file stem; the identity entries
+# keep the contexts of PIE label tables unchanged.
+name: arc_vcc_25
+obs:
+  context_col: context
+  pert_col: target_gene
+  control_label: non-targeting
+label:
+  context_map:
+    competition_train: ARC_H1
+    competition_val: ARC_H1_VAL
+    ARC_H1: ARC_H1
+    ARC_H1_VAL: ARC_H1_VAL

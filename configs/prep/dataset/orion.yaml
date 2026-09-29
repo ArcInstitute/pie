@@ -1,0 +1,7 @@
+# @package _global_
+# Orion (one file per cell line).
+name: orion
+obs:
+  context_col: context
+  pert_col: gene
+  control_label: non-targeting

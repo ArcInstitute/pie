@@ -7,6 +7,30 @@ from collections.abc import Callable, Sequence
 
 from pie.utils import load_common_env, require_env, setup_logging
 
+_PREP_USAGE = """\
+usage: pie-prep dataset=<name> [label_format=table|pie_process] labels=<glob> h5ad=<glob>
+                output_dir=<dir> [genes=<file>] [controls_only=true] [overwrite=true]
+                [<key>=<value> ...]
+
+Build one preprocessed dataset dir from DE label tables and expression h5ads. Settings come
+from configs/prep.yaml, configs/prep/dataset/<name>.yaml (obs.* columns, label rewrites) and
+configs/prep/label_format/<name>.yaml (label.* columns; table = PIE label tables, pie_process =
+pie-process DE parquets). Relative paths are relative to the repository root.
+Datasets: arc_vcc_25, jiang, orion, replogle, tahoe.
+"""
+
+
+def prep_main(argv: list[str] | None = None) -> int:
+    """pie-prep: DE label tables + expression h5ads -> one preprocessed dataset dir."""
+
+    def run(overrides: list[str]) -> None:
+        from pie.prep.config import compose_prep_config
+        from pie.prep.labels import run_prep
+
+        run_prep(compose_prep_config(overrides))
+
+    return _launch(argv, _PREP_USAGE, run)
+
 
 def _launch(
     argv: Sequence[str] | None,

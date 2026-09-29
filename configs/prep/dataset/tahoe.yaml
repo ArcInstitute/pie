@@ -1,0 +1,10 @@
+# @package _global_
+# Tahoe (chemical, one file per cell line): drug-dose perturbations on both sides.
+name: tahoe
+obs:
+  context_col: context
+  pert_col: perturbation
+  control_label: DMSO_TF_0.0uM
+  pert_format: drug_dose
+label:
+  pert_format: drug_dose

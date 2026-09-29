@@ -1,0 +1,36 @@
+# pie-prep: DE label tables + expression h5ads -> one preprocessed dataset dir.
+# `dataset=<name>` picks configs/prep/dataset/<name>.yaml (the h5ad obs columns and the label
+# rewrites); `label_format=<name>` picks the label-table columns (configs/prep/label_format/).
+# Give `labels`, `h5ad` and `output_dir` on the command line; `genes` fixes the gene axis.
+defaults:
+  - _self_
+  - prep/label_format: table
+  - prep/dataset: null
+
+name: ???
+labels: null
+h5ad: ???
+output_dir: ???
+genes: null
+controls_only: false
+overwrite: false
+
+label:
+  context_from: ???
+  context_col: ???
+  pert_col: ???
+  gene_col: ???
+  fc_col: ???
+  fc_space: ???
+  fdr_col: ???
+  context_case: asis
+  context_map: null
+  pert_format: plain
+
+obs:
+  context_col: ???
+  pert_col: ???
+  pert_id_col: null
+  control_label: ???
+  context_map: null
+  pert_format: gene

@@ -1,0 +1,7 @@
+# @package _global_
+# Jiang (30 contexts in one file).
+name: jiang
+obs:
+  context_col: context
+  pert_col: gene
+  control_label: non-targeting
