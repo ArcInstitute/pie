@@ -1,0 +1,13 @@
+# @package _global_
+# ARC VCC 25 (train and val files): gene symbols are the var index; integer counts.
+filter:
+  enabled: true
+  perturbation_column: target_gene
+  var_gene_name: null
+  context_column: context
+normalize:
+  enabled: true
+de:
+  enabled: true
+  groupby: target_gene
+  reference: non-targeting

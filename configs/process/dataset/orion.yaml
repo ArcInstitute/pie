@@ -1,0 +1,11 @@
+# @package _global_
+# Orion (one file per cell line): knockdown filter grouped by obs context, DE once per file.
+filter:
+  enabled: true
+  context_column: context
+normalize:
+  enabled: true
+de:
+  enabled: true
+  groupby: gene
+  reference: non-targeting

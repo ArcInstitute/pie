@@ -1,0 +1,9 @@
+# @package _global_
+# Replogle (4 cell lines): dense counts already on the gene panel, so no knockdown filter.
+normalize:
+  enabled: true
+de:
+  enabled: true
+  groupby: target_gene
+  reference: non-targeting
+  context_column: cell_line

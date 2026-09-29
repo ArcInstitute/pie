@@ -1,0 +1,8 @@
+# @package _global_
+# Tahoe (chemical, one file per cell line): integer counts, no knockdown filter.
+normalize:
+  enabled: true
+de:
+  enabled: true
+  groupby: perturbation
+  reference: "[('DMSO_TF', 0.0, 'uM')]"

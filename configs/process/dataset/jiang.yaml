@@ -1,0 +1,12 @@
+# @package _global_
+# Jiang (30 contexts in one file): knockdown filter and DE per obs context.
+filter:
+  enabled: true
+  context_column: context
+normalize:
+  enabled: true
+de:
+  enabled: true
+  groupby: gene
+  reference: non-targeting
+  context_column: context
