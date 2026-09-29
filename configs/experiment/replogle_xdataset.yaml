@@ -1,0 +1,47 @@
+# @package _global_
+# Cross-dataset: train on Tahoe, Jiang, ARC VCC 25 and Orion; evaluate best_auprc.ckpt zero-shot on
+# Replogle (test_seen.json, test_unseen.json). Replogle stays first with weight 0 and no training
+# rows: it fixes the gene-axis order and the sorted dataset ids that seed the sampler.
+experiment_name: replogle_xdataset
+
+data:
+  preprocessed_dirs:
+    - ${oc.env:PIE_DATA_ROOT}/replogle/preprocessed
+    - ${oc.env:PIE_DATA_ROOT}/tahoe/preprocessed
+    - ${oc.env:PIE_DATA_ROOT}/jiang/preprocessed
+    - ${oc.env:PIE_DATA_ROOT}/arc_vcc_25/preprocessed
+    - ${oc.env:PIE_DATA_ROOT}/orion/preprocessed
+  dataset_weights:
+    replogle: 0.0
+    tahoe: 0.68
+    jiang: 0.01
+    arc_vcc_25: 0.01
+    orion: 0.3
+  split_dir: data/splits/replogle_xdataset
+  source_dirs:
+    esm2: ${oc.env:PIE_DATA_ROOT}/sources/esm2
+    ncbi_text: ${oc.env:PIE_DATA_ROOT}/sources/ncbi_text
+    string_space: ${oc.env:PIE_DATA_ROOT}/sources/string_space
+    depmap_gene_effect: ${oc.env:PIE_DATA_ROOT}/sources/depmap_gene_effect
+    context_text: ${oc.env:PIE_DATA_ROOT}/sources/context_text
+    perturbation_text: ${oc.env:PIE_DATA_ROOT}/sources/perturbation_text
+    smiles: ${oc.env:PIE_DATA_ROOT}/sources/smiles
+    l1000_tas: ${oc.env:PIE_DATA_ROOT}/sources/l1000_tas
+    prism_secondary: ${oc.env:PIE_DATA_ROOT}/sources/prism_secondary
+    jump_morphology: ${oc.env:PIE_DATA_ROOT}/sources/jump_morphology
+  delta_p:
+    bin_width_fold_change: 1.01
+  evidence:
+    seed: 0
+    chunk: 2048
+
+trainer:
+  devices: 4
+  num_nodes: 2
+  max_steps: 10000
+  accumulate_grad_batches: 1
+
+logger:
+  group: replogle_xdataset
+  tags:
+    - replogle_xdataset

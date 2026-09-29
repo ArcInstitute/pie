@@ -275,3 +275,207 @@ def test_infer_config_rejects_an_unknown_rows_kind(
     monkeypatch.setenv("PIE_RUNS_ROOT", str(tmp_path))
     with pytest.raises(ValidationError):
         compose_infer_config(["experiment_name=x", "rows_path=q.json", "rows_kind=table"])
+
+
+# --- canonical experiment overlays (configs/experiment/) ---------------------------------------
+# Golden values are the resolved reference recipes, restated in the new schema.
+
+_EXPERIMENT_FOLDS = ("hepg2", "jurkat", "k562", "rpe1")
+_EXPERIMENT_SETTINGS = ("unseen_ctx", "unseen_pert", "unseen_ctx_pert")
+_WDATASET_SOURCES = (
+    "esm2", "ncbi_text", "string_space", "depmap_gene_effect", "context_text", "perturbation_text",
+)
+_XDATASET_SOURCES = (
+    *_WDATASET_SOURCES, "smiles", "l1000_tas", "prism_secondary", "jump_morphology",
+)
+_XDATASET_DATASETS = ("replogle", "tahoe", "jiang", "arc_vcc_25", "orion")
+_XDATASET_WEIGHTS = {
+    "replogle": 0.0, "tahoe": 0.68, "jiang": 0.01, "arc_vcc_25": 0.01, "orion": 0.3,
+}
+_EXPERIMENT_MODEL = {
+    "d_model": 768,
+    "n_latents": 512,
+    "n_encoder_layers": 4,
+    "n_processor_layers": 6,
+    "n_decoder_layers": 4,
+    "num_heads": 8,
+    "ff_mult": 2,
+    "dropout": 0.1,
+    "drop_src": 0.05,
+    "inference_chunk_size": 2048,
+    "class_weight_cap": 10.0,
+    "class_weight_cap_delta_p": 5.0,
+    "lfc_huber_delta": 1.0,
+    "lfc_target_gene_alpha": 0.001,
+    "lfc_direction_temperature": 0.25,
+    "evidence": {"encoder_dim": 64, "dim": 128, "dropout": 0.1, "response_dropout": 0.25},
+    "temperature": {"de": 4.0, "delta_p": 4.5},
+}
+
+
+def _experiment_roots(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[str, str]:
+    data_root = tmp_path / "data_root"
+    runs_root = tmp_path / "runs_root"
+    monkeypatch.setenv("PIE_DATA_ROOT", str(data_root))
+    monkeypatch.setenv("PIE_RUNS_ROOT", str(runs_root))
+    monkeypatch.setenv("PIE_CACHE_DIR", str(tmp_path / "cache_root"))
+    return str(data_root), str(runs_root)
+
+
+def _experiment_golden(
+    data_root: str,
+    runs_root: str,
+    *,
+    experiment_name: str,
+    vars_: dict[str, str],
+    datasets: tuple[str, ...],
+    weights: dict[str, float] | None,
+    split_dir: str,
+    sources: tuple[str, ...],
+    bin_width: float,
+    evidence: tuple[int, int],
+    trainer: tuple[int, int, int, int],
+    group: str,
+    tags: list[str],
+) -> dict[str, object]:
+    devices, num_nodes, max_steps, accumulate = trainer
+    return {
+        "vars": vars_,
+        "experiment_name": experiment_name,
+        "seed": 42,
+        "run_dir": f"{runs_root}/{experiment_name}",
+        "overwrite": False,
+        "resume": False,
+        "data": {
+            "preprocessed_dirs": [f"{data_root}/{name}/preprocessed" for name in datasets],
+            "dataset_weights": weights,
+            "split_dir": split_dir,
+            "source_dirs": {name: f"{data_root}/sources/{name}" for name in sources},
+            "gene_text_dir": f"{data_root}/sources/gene_text",
+            "aliases_path": "data/sources/aliases.yaml",
+            "delta_p": {
+                "bin_width_fold_change": bin_width,
+                "max_delta_percentile": 99.9,
+                "max_delta": None,
+            },
+            "evidence": {"seed": evidence[0], "chunk": evidence[1], "lfc_clip_percentile": 95.0},
+            "batch_size": 16,
+            "num_workers": 4,
+            "fdr_threshold": 0.05,
+        },
+        "model": _EXPERIMENT_MODEL,
+        "optimizer": {"lr": 1e-4, "weight_decay": 0.01, "betas": [0.9, 0.999]},
+        "scheduler": {"warmup_fraction": 0.05, "constant_steps": 4250, "eta_min": 1e-6},
+        "trainer": {
+            "accelerator": "gpu",
+            "devices": devices,
+            "num_nodes": num_nodes,
+            "precision": "bf16-mixed",
+            "max_steps": max_steps,
+            "accumulate_grad_batches": accumulate,
+            "val_every_n_steps": 100,
+            "gradient_clip_val": 10.0,
+            "log_every_n_steps": 50,
+        },
+        "logger": {"enabled": True, "group": group, "tags": tags},
+    }
+
+
+@pytest.mark.parametrize(
+    ("fold", "overrides"),
+    [
+        ("k562", []),
+        ("hepg2", ["vars.fold=hepg2"]),
+        ("jurkat", ["vars.fold=jurkat"]),
+        ("rpe1", ["vars.fold=rpe1"]),
+    ],
+)
+def test_experiment_wdataset_matches_the_reference_recipe(
+    fold: str, overrides: list[str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, runs_root = _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=replogle_wdataset", *overrides])
+    assert cfg.model_dump(mode="json") == _experiment_golden(
+        data_root,
+        runs_root,
+        experiment_name=f"replogle_wdataset/{fold}",
+        vars_={"fold": fold},
+        datasets=("replogle",),
+        weights=None,
+        split_dir=f"data/splits/replogle_wdataset/unseen_ctx/{fold}",
+        sources=_WDATASET_SOURCES,
+        bin_width=1.1,
+        evidence=(42, 256),
+        trainer=(2, 1, 5000, 4),
+        group="replogle_wdataset",
+        tags=["replogle_wdataset", fold],
+    )
+    assert list(cfg.data.source_dirs) == list(_WDATASET_SOURCES)
+
+
+def test_experiment_xdataset_matches_the_reference_recipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, runs_root = _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=replogle_xdataset"])
+    assert cfg.model_dump(mode="json") == _experiment_golden(
+        data_root,
+        runs_root,
+        experiment_name="replogle_xdataset",
+        vars_={},
+        datasets=_XDATASET_DATASETS,
+        weights=_XDATASET_WEIGHTS,
+        split_dir="data/splits/replogle_xdataset",
+        sources=_XDATASET_SOURCES,
+        bin_width=1.01,
+        evidence=(0, 2048),
+        trainer=(4, 2, 10000, 1),
+        group="replogle_xdataset",
+        tags=["replogle_xdataset"],
+    )
+    assert list(cfg.data.source_dirs) == list(_XDATASET_SOURCES)
+    assert cfg.data.dataset_weights is not None
+    assert list(cfg.data.dataset_weights) == list(_XDATASET_DATASETS)
+
+
+def test_experiment_wdataset_split_dirs_hold_every_eval_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    for fold in _EXPERIMENT_FOLDS:
+        cfg = compose_train_config(["experiment=replogle_wdataset", f"vars.fold={fold}"])
+        split_dir = REPO_ROOT / cfg.data.split_dir
+        assert (split_dir / "train.json").is_file()
+        assert (split_dir / "val.json").is_file()
+        for setting in _EXPERIMENT_SETTINGS:
+            test_json = REPO_ROOT / "data/splits/replogle_wdataset" / setting / fold / "test.json"
+            assert test_json.is_file()
+
+
+def test_experiment_xdataset_split_dir_holds_every_eval_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=replogle_xdataset"])
+    split_dir = REPO_ROOT / cfg.data.split_dir
+    for name in ("train.json", "val.json", "test_seen.json", "test_unseen.json"):
+        assert (split_dir / name).is_file()
+
+
+def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=replogle_xdataset"])
+    names = [Path(p).parent.name for p in cfg.data.preprocessed_dirs]
+    assert names == ["replogle", "tahoe", "jiang", "arc_vcc_25", "orion"]
+    # The sorted names seed the sampler and order the evidence donors.
+    assert sorted(names) == ["arc_vcc_25", "jiang", "orion", "replogle", "tahoe"]
+    assert sorted(cfg.data.dataset_weights or {}) == sorted(names)
+
+
+@pytest.mark.parametrize("experiment", ["replogle_wdataset", "replogle_xdataset"])
+def test_experiment_overlays_reject_unknown_keys(
+    experiment: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    with pytest.raises(ValidationError, match="bogus"):
+        compose_train_config([f"experiment={experiment}", "+data.bogus=1"])

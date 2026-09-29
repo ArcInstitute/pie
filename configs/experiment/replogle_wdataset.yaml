@@ -1,0 +1,39 @@
+# @package _global_
+# Within-dataset Replogle. One run per fold (vars.fold: hepg2, jurkat, k562, rpe1): train and
+# validate on the other three cell lines, then evaluate best_auprc.ckpt on the fold's three test
+# sets (unseen_ctx, unseen_pert, unseen_ctx_pert). train.json and val.json are the same in all
+# three setting dirs of a fold.
+vars:
+  fold: k562
+
+experiment_name: replogle_wdataset/${vars.fold}
+
+data:
+  preprocessed_dirs:
+    - ${oc.env:PIE_DATA_ROOT}/replogle/preprocessed
+  dataset_weights: null
+  split_dir: data/splits/replogle_wdataset/unseen_ctx/${vars.fold}
+  source_dirs:
+    esm2: ${oc.env:PIE_DATA_ROOT}/sources/esm2
+    ncbi_text: ${oc.env:PIE_DATA_ROOT}/sources/ncbi_text
+    string_space: ${oc.env:PIE_DATA_ROOT}/sources/string_space
+    depmap_gene_effect: ${oc.env:PIE_DATA_ROOT}/sources/depmap_gene_effect
+    context_text: ${oc.env:PIE_DATA_ROOT}/sources/context_text
+    perturbation_text: ${oc.env:PIE_DATA_ROOT}/sources/perturbation_text
+  delta_p:
+    bin_width_fold_change: 1.1
+  evidence:
+    seed: 42
+    chunk: 256
+
+trainer:
+  devices: 2
+  num_nodes: 1
+  max_steps: 5000
+  accumulate_grad_batches: 4
+
+logger:
+  group: replogle_wdataset
+  tags:
+    - replogle_wdataset
+    - ${vars.fold}
