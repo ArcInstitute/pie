@@ -1,0 +1,38 @@
+# Perturbation aliases per knowledge source. An alias is used only when the perturbation key
+# itself is missing from that source, and only if the alias target exists in the source.
+esm2:
+  TAZ: TAFAZZIN
+  ADAL: MAPDA
+  C15orf48: COXFA4L3
+  C17orf49: BACC1
+  C4orf3: ARLN
+  ILVBL: HACL2
+  MFSD10: SLC75A1
+  SLC22A18: SLC67A1
+  SMIM6: ERLN
+  STK19: WHR1
+  TMEM104: SLC38A12
+  TMEM30B: CDC50B
+ncbi_text:
+  TAZ: TAFAZZIN
+  ADAL: MAPDA
+  C15orf48: COXFA4L3
+  C16orf74: CLMB
+  C17orf49: BACC1
+  C4orf3: ARLN
+  ILVBL: HACL2
+  MFSD10: SLC75A1
+  SLC22A18: SLC67A1
+  SMIM6: ERLN
+  STK19: WHR1
+  TMEM104: SLC38A12
+  TMEM30B: CDC50B
+string_space: {}
+depmap_gene_effect:
+  TAZ: TAFAZZIN
+  ADAL: MAPDA
+  C17orf49: BACC1
+  C4orf3: ARLN
+  SLC22A18: SLC67A1
+  SMIM6: ERLN
+  STK19: WHR1

@@ -1,0 +1,6 @@
+# ARC VCC 25 contexts -> Cellosaurus accessions. Both contexts are H1 embryonic stem cells.
+contexts:
+  ARC_H1:
+    cellosaurus: CVCL_9771
+  ARC_H1_VAL:
+    cellosaurus: CVCL_9771
