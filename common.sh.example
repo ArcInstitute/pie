@@ -1,0 +1,9 @@
+# Copy to common.sh and fill in. Every pie CLI loads it; variables already set in the environment win.
+# Values are literal: no $VAR or ~ expansion and no inline comments; single-quote a value with spaces.
+WANDB_ENTITY=
+WANDB_PROJECT=
+PIE_DATA_ROOT=
+PIE_RUNS_ROOT=
+PIE_CACHE_DIR=
+# NCBI_API_KEY=
+# NCBI_EMAIL=

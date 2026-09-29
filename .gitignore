@@ -1,0 +1,23 @@
+# Local environment
+common.sh
+.venv/
+
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+*.egg-info/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Training and evaluation outputs
+*.ckpt
+wandb/
+lightning_logs/
+outputs/
+multirun/
+.hydra/
