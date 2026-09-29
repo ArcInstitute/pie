@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable, Sequence
 
@@ -93,6 +94,32 @@ def infer_main(argv: list[str] | None = None) -> int:
         run_infer(compose_infer_config(overrides))
 
     return _launch(argv, _INFER_USAGE, run, require=ENV_ROOTS)
+
+
+_SOURCES_USAGE = """\
+usage: pie-sources tools=[<name>,...] preprocessed_dirs=[<dir>,...] output_root=<dir>
+                   [<key>=<value> ...]
+
+Build knowledge sources into <output_root>/<name>/. Settings come from configs/sources.yaml:
+with_deps=false builds only the named tools, prior_root=<dir> extends earlier text sources,
+options.<key>=<value> sets builder settings (depmap_csv, drug_metadata, gene_info, device, ...),
+overwrite=true replaces existing outputs.
+Relative paths are relative to the repository root.
+"""
+
+
+def sources_main(argv: list[str] | None = None) -> int:
+    """pie-sources: build the named tools; prints {name: out_dir} as JSON."""
+
+    def run(overrides: list[str]) -> None:
+        from pie.sources.config import compose_sources_config
+        from pie.sources.registry import build_sources
+
+        cfg = compose_sources_config(overrides)
+        outputs = build_sources(cfg)
+        print(json.dumps({name: str(path) for name, path in outputs.items()}, indent=2))
+
+    return _launch(argv, _SOURCES_USAGE, run)
 
 
 def _launch(
