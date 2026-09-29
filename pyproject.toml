@@ -83,4 +83,5 @@ addopts = "--import-mode=importlib"
 
 [project.scripts]
 pie-prep = "pie.cli:prep_main"
+pie-train = "pie.cli:train_main"
 pie-process = "pie.cli:process_main"

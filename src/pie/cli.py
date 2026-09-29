@@ -5,7 +5,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
-from pie.utils import load_common_env, require_env, setup_logging
+from pie.utils import ENV_ROOTS, load_common_env, require_env, setup_logging
 
 _PREP_USAGE = """\
 usage: pie-prep dataset=<name> [label_format=table|pie_process] labels=<glob> h5ad=<glob>
@@ -30,6 +30,27 @@ def prep_main(argv: list[str] | None = None) -> int:
         run_prep(compose_prep_config(overrides))
 
     return _launch(argv, _PREP_USAGE, run)
+
+
+_TRAIN_USAGE = """\
+usage: pie-train experiment=<name> [<key>=<value> ...]
+
+Train PIE from configs/train.yaml plus an experiment overlay (configs/experiment/<name>.yaml)
+and key=value overrides, e.g. vars.fold=k562, logger.enabled=false, resume=true or
+overwrite=true. Relative paths are relative to the repository root.
+"""
+
+
+def train_main(argv: list[str] | None = None) -> int:
+    """pie-train: fit the delta-p grid and evidence at setup, then train."""
+
+    def run(overrides: list[str]) -> None:
+        from pie import train
+        from pie.config import compose_train_config
+
+        train.run_train(compose_train_config(overrides))
+
+    return _launch(argv, _TRAIN_USAGE, run, require=ENV_ROOTS)
 
 
 def _launch(

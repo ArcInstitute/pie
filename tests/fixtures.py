@@ -255,3 +255,90 @@ def tiny_data_config(tiny: TinyData, **overrides: Any) -> Any:
     }
     values.update(overrides)
     return DataConfig(**values)
+
+
+TINY_MODEL_OVERRIDES: tuple[str, ...] = (
+    "model.d_model=8",
+    "model.n_latents=4",
+    "model.n_encoder_layers=1",
+    "model.n_processor_layers=1",
+    "model.n_decoder_layers=1",
+    "model.num_heads=2",
+    "model.inference_chunk_size=3",
+    "model.evidence.encoder_dim=8",
+    "model.evidence.dim=8",
+)
+
+
+def required_train_overrides(
+    tiny: TinyData,
+    *,
+    experiment_name: str,
+    devices: int,
+    num_nodes: int,
+    max_steps: int,
+    accumulate_grad_batches: int,
+) -> list[str]:
+    """Hydra overrides for exactly the `???` keys of configs/train.yaml, with data.* on `tiny`."""
+    dirs = ",".join(f"'{tiny.preprocessed[name]}'" for name in ("alpha", "beta"))
+    sources = ",".join(f"{name}:'{path}'" for name, path in tiny.sources.items())
+    return [
+        f"experiment_name={experiment_name}",
+        f"data.preprocessed_dirs=[{dirs}]",
+        "data.dataset_weights=null",
+        f"data.split_dir='{tiny.split_dir}'",
+        f"data.source_dirs={{{sources}}}",
+        "data.delta_p.bin_width_fold_change=1.5",
+        "data.evidence.seed=0",
+        "data.evidence.chunk=2",
+        f"trainer.devices={devices}",
+        f"trainer.num_nodes={num_nodes}",
+        f"trainer.max_steps={max_steps}",
+        f"trainer.accumulate_grad_batches={accumulate_grad_batches}",
+    ]
+
+
+def train_overrides(
+    tiny: TinyData,
+    *,
+    experiment_name: str = "tiny_run",
+    max_steps: int = 2,
+    val_every_n_steps: int = 1,
+    devices: int = 1,
+    accumulate_grad_batches: int = 1,
+    logger: bool = False,
+    extra: Sequence[str] = (),
+) -> list[str]:
+    """Overrides of configs/train.yaml for a tiny CPU run on `tiny` (fp32, batch 2, no workers)."""
+    return [
+        *required_train_overrides(
+            tiny,
+            experiment_name=experiment_name,
+            devices=devices,
+            num_nodes=1,
+            max_steps=max_steps,
+            accumulate_grad_batches=accumulate_grad_batches,
+        ),
+        f"data.gene_text_dir='{tiny.gene_text}'",
+        f"data.aliases_path='{tiny.aliases}'",
+        "data.batch_size=2",
+        "data.num_workers=0",
+        "trainer.accelerator=cpu",
+        "trainer.precision=32-true",
+        f"trainer.val_every_n_steps={val_every_n_steps}",
+        "trainer.log_every_n_steps=1",
+        "scheduler.constant_steps=0",
+        f"logger.enabled={'true' if logger else 'false'}",
+        *TINY_MODEL_OVERRIDES,
+        *extra,
+    ]
+
+
+def set_run_env(mp: Any, tiny: TinyData, runs_root: Path) -> None:
+    """PIE_DATA_ROOT = the tiny root, PIE_RUNS_ROOT = `runs_root`, PIE_CACHE_DIR = the tiny cache.
+
+    `mp` is a pytest MonkeyPatch (function fixture or `pytest.MonkeyPatch.context()`).
+    """
+    mp.setenv("PIE_DATA_ROOT", str(tiny.root))
+    mp.setenv("PIE_RUNS_ROOT", str(runs_root))
+    mp.setenv("PIE_CACHE_DIR", str(tiny.cache_dir))
