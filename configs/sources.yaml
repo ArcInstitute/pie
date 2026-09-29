@@ -7,6 +7,11 @@ preprocessed_dirs: ???
 output_root: ???
 prior_root: null
 overwrite: false
+mode: build
+
+verify:
+  reference: null
+  aliases: data/sources/aliases.yaml
 
 options:
   contexts_dir: data/sources/contexts

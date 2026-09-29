@@ -138,3 +138,104 @@ def build_sources(cfg: SourcesConfig) -> dict[str, Path]:
         log.info("building source %s", name)
         outputs[name] = TOOLS[name].run(ctx)
     return outputs
+
+
+# --- gene and chemical source tools (imports are lazy: the registry pulls no optional deps) ---
+
+
+def _run_ncbi_text(ctx: RunContext) -> Path:
+    from pie.sources.text.ncbi import run_ncbi_text
+
+    return run_ncbi_text(ctx)
+
+
+def _run_esm2(ctx: RunContext) -> Path:
+    from pie.sources.embed.esm2 import run_esm2
+
+    return run_esm2(ctx)
+
+
+def _run_string_space(ctx: RunContext) -> Path:
+    from pie.sources.string import run_string_space
+
+    return run_string_space(ctx)
+
+
+def _run_depmap_gene_effect(ctx: RunContext) -> Path:
+    from pie.sources.depmap import run_depmap
+
+    return run_depmap(ctx)
+
+
+def _run_smiles(ctx: RunContext) -> Path:
+    from pie.sources.embed.chemberta import run_smiles
+
+    return run_smiles(ctx)
+
+
+def _run_l1000_tas(ctx: RunContext) -> Path:
+    from pie.sources.chem_profiles import run_profile
+
+    return run_profile("l1000_tas", ctx)
+
+
+def _run_prism_secondary(ctx: RunContext) -> Path:
+    from pie.sources.chem_profiles import run_profile
+
+    return run_profile("prism_secondary", ctx)
+
+
+def _run_jump_morphology(ctx: RunContext) -> Path:
+    from pie.sources.chem_profiles import run_profile
+
+    return run_profile("jump_morphology", ctx)
+
+
+TOOLS.update(
+    {
+        "ncbi_text": SourceTool(
+            name="ncbi_text", deps=(), uses_openai=False, run=_run_ncbi_text
+        ),
+        "esm2": SourceTool(name="esm2", deps=(), uses_openai=False, run=_run_esm2),
+        "string_space": SourceTool(
+            name="string_space", deps=(), uses_openai=False, run=_run_string_space
+        ),
+        "depmap_gene_effect": SourceTool(
+            name="depmap_gene_effect", deps=(), uses_openai=False, run=_run_depmap_gene_effect
+        ),
+        "smiles": SourceTool(name="smiles", deps=(), uses_openai=False, run=_run_smiles),
+        "l1000_tas": SourceTool(
+            name="l1000_tas", deps=(), uses_openai=False, run=_run_l1000_tas
+        ),
+        "prism_secondary": SourceTool(
+            name="prism_secondary", deps=(), uses_openai=False, run=_run_prism_secondary
+        ),
+        "jump_morphology": SourceTool(
+            name="jump_morphology", deps=(), uses_openai=False, run=_run_jump_morphology
+        ),
+    }
+)
+
+
+def verify_sources(
+    sources: dict[str, Path],
+    preprocessed: list[PreprocessedDir],
+    aliases_path: Path | None,
+    reference_root: Path | None,
+) -> dict[str, object]:
+    """Coverage of every dataset key per source (after aliases) and, with a reference, diffs."""
+    from pie.sources.verify import verify_sources as verify
+
+    return verify(sources, preprocessed, aliases_path, reference_root)
+
+
+def verify_command(cfg: SourcesConfig) -> dict[str, object]:
+    """mode=verify: verify_sources over <output_root>/<name> for exactly the named tools."""
+    out_root = resolve_path(cfg.output_root)
+    aliases, reference = cfg.verify.aliases, cfg.verify.reference
+    return verify_sources(
+        {name: out_root / name for name in cfg.tools},
+        [PreprocessedDir.open(resolve_path(p)) for p in cfg.preprocessed_dirs],
+        resolve_path(aliases) if aliases else None,
+        resolve_path(reference) if reference else None,
+    )

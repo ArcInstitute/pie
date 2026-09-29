@@ -38,6 +38,13 @@ class SourceOptions(StrictModel):
         return self.model_copy(update=update)
 
 
+class VerifyConfig(StrictModel):
+    """mode=verify: the alias table and an optional dir of reference <name>/ sources."""
+
+    reference: str | None
+    aliases: str | None
+
+
 class SourcesConfig(StrictModel):
     """The composed pie-sources config."""
 
@@ -47,7 +54,9 @@ class SourcesConfig(StrictModel):
     output_root: str
     prior_root: str | None
     overwrite: bool
+    mode: Literal["build", "verify"]
     options: SourceOptions
+    verify: VerifyConfig
 
     @model_validator(mode="after")
     def _check(self) -> SourcesConfig:

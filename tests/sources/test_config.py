@@ -39,3 +39,12 @@ def test_unknown_tools_keys_and_the_removed_h5ad_option_fail() -> None:
         compose_sources_config([*REQUIRED, "options.h5ad={replogle: x}"])
     with pytest.raises(ValidationError):
         compose_sources_config([*REQUIRED, "+options.h5ad={replogle: x}"])
+
+
+def test_mode_defaults_to_build_with_the_shipped_aliases() -> None:
+    cfg = compose_sources_config(REQUIRED)
+    assert cfg.mode == "build"
+    assert (cfg.verify.aliases, cfg.verify.reference) == ("data/sources/aliases.yaml", None)
+    assert compose_sources_config([*REQUIRED, "mode=verify"]).mode == "verify"
+    with pytest.raises(ValidationError):
+        compose_sources_config([*REQUIRED, "mode=nope"])
