@@ -1,6 +1,6 @@
 [project]
 name = "pie"
-version = "0.1.0"
+version = "0.1.1"
 description = "PIE: predicting transcriptional responses to perturbations from biological knowledge sources"
 requires-python = "==3.12.*"
 dependencies = [
