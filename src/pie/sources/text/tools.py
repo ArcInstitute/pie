@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 import pie
+from pie.sources.common import provenance_path
 from pie.sources.contract import (
     DESCRIPTIONS,
     FORMAT_VERSION,
@@ -24,7 +25,7 @@ from pie.sources.contract import (
 )
 from pie.sources.embed import openai as openai_embed
 from pie.sources.text import contexts, drugs, genes
-from pie.utils import canonical_json, sha256_bytes, sha256_file, to_portable
+from pie.utils import canonical_json, sha256_bytes, sha256_file
 
 if TYPE_CHECKING:
     from pie.sources.registry import RunContext
@@ -94,7 +95,7 @@ def write_text_source(
             "revision": None,  # the OpenAI API serves the model by name only
             "batch": openai_embed.BATCH,
             "max_tokens": openai_embed.MAX_TOKENS,
-            "prior": to_portable(prior_path) if prior_path is not None else None,
+            "prior": provenance_path(prior_path) if prior_path is not None else None,
             "on_conflict": ctx.options.on_conflict,
             "params": dict(params),
         },
@@ -141,7 +142,7 @@ def run_context_text(ctx: RunContext) -> Path:
     order = ordered_keys(d.contexts for d in ctx.datasets)
     params = {
         "cellosaurus_release": opts.cellosaurus_release,
-        "contexts_dir": to_portable(opts.contexts_dir),
+        "contexts_dir": provenance_path(opts.contexts_dir),
     }
     record = client.provenance()
     inputs = {
@@ -216,8 +217,8 @@ def run_perturbation_text(ctx: RunContext) -> Path:
         for d in ctx.datasets
     )
     params = {
-        "gene_info": to_portable(opts.gene_info) if opts.gene_info else None,
-        "drug_metadata": to_portable(opts.drug_metadata) if opts.drug_metadata else None,
+        "gene_info": provenance_path(opts.gene_info) if opts.gene_info else None,
+        "drug_metadata": provenance_path(opts.drug_metadata) if opts.drug_metadata else None,
     }
     texts = {k: described[k] for k in order}
     return write_text_source(ctx, "perturbation_text", "pert", texts, params, inputs)
@@ -236,6 +237,6 @@ def run_gene_text(ctx: RunContext) -> Path:
     described = genes.describe_gene_queries(vocab, prior, pert_output, pert_keys, index, esummary)
     inputs.update(esummary.provenance())
     inputs["perturbation_text"] = _file_input(Path(pert_dir) / DESCRIPTIONS)
-    params = {"pert_output": to_portable(pert_dir)}
+    params = {"pert_output": provenance_path(pert_dir)}
     texts = {g: described[g] for g in vocab}
     return write_text_source(ctx, "gene_text", "gene", texts, params, inputs)

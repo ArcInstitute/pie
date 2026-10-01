@@ -15,8 +15,9 @@ from pie.sources.common import (
     environment_record,
     headers_path,
     input_record,
+    provenance_path,
 )
-from pie.utils import sha256_bytes
+from pie.utils import REPO_ROOT, sha256_bytes
 
 URL = "https://x.test/a.txt"
 
@@ -102,3 +103,13 @@ def test_base_provenance_and_environment_record() -> None:
     assert env["device"] == "cpu"
     assert env["torch"]
     assert "accelerator" not in env
+
+
+def test_provenance_path_records_no_absolute_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("PIE_DATA_ROOT", str(tmp_path / "data"))
+    assert provenance_path(tmp_path / "data" / "sources" / "x") == "${PIE_DATA_ROOT}/sources/x"
+    assert provenance_path(REPO_ROOT / "data" / "sources" / "contexts") == "data/sources/contexts"
+    assert provenance_path(tmp_path / "elsewhere" / "drugs.csv") == "drugs.csv"
+    assert provenance_path("${PIE_DATA_ROOT}/y") == "${PIE_DATA_ROOT}/y"

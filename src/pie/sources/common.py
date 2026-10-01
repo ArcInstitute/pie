@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pie
-from pie.utils import sha256_file
+from pie.utils import sha256_file, to_portable
 
 if TYPE_CHECKING:
     import requests
@@ -101,6 +101,16 @@ def input_record(path: Path, url: str | None, release: str | None = None) -> dic
         "sha256": sha256_file(path),
         "release": release or headers.get("x-uniprot-release") or headers.get("last-modified"),
     }
+
+
+def provenance_path(path: Path | str) -> str:
+    """A path for a provenance params block, never absolute.
+
+    to_portable's '${NAME}/rel' or repo-relative form; a path outside every env root and the repo
+    is reduced to its file name (its input record keeps the sha256).
+    """
+    portable = to_portable(path)
+    return Path(portable).name if Path(portable).is_absolute() else portable
 
 
 def _version(distribution: str) -> str | None:
