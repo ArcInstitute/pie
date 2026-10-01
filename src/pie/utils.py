@@ -275,6 +275,8 @@ def to_portable(path: Path | str) -> str:
     normalized or unchanged; any other absolute path is returned as-is.
     """
     text = str(path)
+    if text.startswith("hf://"):
+        return text
     if _ENV_REF.match(text):
         return text
     candidate = Path(os.path.normpath(text))

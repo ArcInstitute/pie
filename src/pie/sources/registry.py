@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pie.assets import resolve_asset
 from pie.data.preprocessed import PreprocessedDir
 from pie.sources.config import SourceOptions
 from pie.utils import resolve_path
@@ -126,7 +127,10 @@ def build_sources(cfg: SourcesConfig) -> dict[str, Path]:
 
         openai_embed.require_openai_key()
     ctx = RunContext(
-        datasets=[PreprocessedDir.open(resolve_path(p)) for p in cfg.preprocessed_dirs],
+        datasets=[
+            PreprocessedDir.open(resolve_asset(p, kind="preprocessed"))
+            for p in cfg.preprocessed_dirs
+        ],
         prior_root=resolve_path(cfg.prior_root) if cfg.prior_root else None,
         out_root=out_root,
         cache_dir=cache_dir,
@@ -235,7 +239,10 @@ def verify_command(cfg: SourcesConfig) -> dict[str, object]:
     aliases, reference = cfg.verify.aliases, cfg.verify.reference
     return verify_sources(
         {name: out_root / name for name in cfg.tools},
-        [PreprocessedDir.open(resolve_path(p)) for p in cfg.preprocessed_dirs],
+        [
+            PreprocessedDir.open(resolve_asset(p, kind="preprocessed"))
+            for p in cfg.preprocessed_dirs
+        ],
         resolve_path(aliases) if aliases else None,
         resolve_path(reference) if reference else None,
     )

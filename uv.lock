@@ -1088,6 +1088,7 @@ source = { editable = "." }
 dependencies = [
     { name = "anndata" },
     { name = "h5py" },
+    { name = "huggingface-hub" },
     { name = "hydra-core" },
     { name = "lightning" },
     { name = "numpy" },
@@ -1108,7 +1109,6 @@ process = [
     { name = "gpudge", extra = ["fast"] },
 ]
 sources = [
-    { name = "huggingface-hub" },
     { name = "openai" },
     { name = "rdkit" },
     { name = "requests" },
@@ -1128,7 +1128,7 @@ requires-dist = [
     { name = "anndata", specifier = "==0.13.2" },
     { name = "gpudge", extras = ["fast"], marker = "extra == 'process'", git = "https://github.com/ArcInstitute/gpudge.git?rev=bfbde26903b5580a4cf7692985f7b3c20f3bfebd" },
     { name = "h5py", specifier = "==3.16.0" },
-    { name = "huggingface-hub", marker = "extra == 'sources'", specifier = "==1.21.0" },
+    { name = "huggingface-hub", specifier = "==1.21.0" },
     { name = "hydra-core", specifier = "==1.3.3" },
     { name = "lightning", specifier = "==2.6.5" },
     { name = "numpy", specifier = "==2.4.6" },

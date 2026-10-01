@@ -12,6 +12,7 @@ from typing import Literal
 
 from pydantic import field_validator
 
+from pie.assets import parse_hf_reference, pin_asset_reference
 from pie.data.datamodule import DataConfig
 from pie.model.pie import ModelConfig
 from pie.utils import StrictModel, compose_config, resolve_path, to_portable
@@ -100,7 +101,37 @@ def _map_paths(cfg: TrainConfig, convert: Callable[[str], str]) -> TrainConfig:
 
 
 def _resolved(path: str) -> str:
+    if path.startswith("hf://"):
+        return path
     return str(resolve_path(path))
+
+
+def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None) -> TrainConfig:
+    """Pin remote assets for saved configs; resume replays the previous run's commits."""
+    prior = previous.data if previous is not None else None
+
+    def pin(value: str, old: str | None = None) -> str:
+        if value.startswith("hf://") and old is not None and old.startswith("hf://"):
+            requested, saved = parse_hf_reference(value), parse_hf_reference(old)
+            if (requested.repo_id, requested.subdir) != (saved.repo_id, saved.subdir):
+                raise ValueError(f"resume HF asset {value} differs from the saved asset {old}")
+            return pin_asset_reference(old)
+        return pin_asset_reference(value)
+
+    data = cfg.data
+    dirs = [
+        pin(p, prior.preprocessed_dirs[i] if prior and i < len(prior.preprocessed_dirs) else None)
+        for i, p in enumerate(data.preprocessed_dirs)
+    ]
+    sources = {
+        name: pin(p, prior.source_dirs.get(name) if prior else None)
+        for name, p in data.source_dirs.items()
+    }
+    return cfg.model_copy(update={"data": data.model_copy(update={
+        "preprocessed_dirs": dirs,
+        "source_dirs": sources,
+        "gene_text_dir": pin(data.gene_text_dir, prior.gene_text_dir if prior else None),
+    })})
 
 
 def portable_train_config(cfg: TrainConfig) -> TrainConfig:
