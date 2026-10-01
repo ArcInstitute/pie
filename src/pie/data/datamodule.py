@@ -16,6 +16,7 @@ import torch
 from pydantic import field_validator
 from torch.utils.data import DataLoader
 
+from pie.assets import resolve_asset
 from pie.data import samplers
 from pie.data.dataset import (
     LABEL_KINDS,
@@ -63,7 +64,7 @@ Pair = tuple[str, str, str]
 
 
 class DataConfig(StrictModel):
-    """data.* (paths are portable strings resolved with pie.utils.resolve_path)."""
+    """data.* (asset paths are local strings or explicit hf://datasets/... references)."""
 
     preprocessed_dirs: list[str]
     dataset_weights: dict[str, float] | None
@@ -192,7 +193,10 @@ class PieDataModule(L.LightningDataModule):
         self.seed = seed
         self._stats = stats
         self._evidence_cfg = evidence_source if evidence_source is not None else cfg
-        self.dirs = [PreprocessedDir.open(resolve_path(p)) for p in cfg.preprocessed_dirs]
+        self.dirs = [
+            PreprocessedDir.open(resolve_asset(p, kind="preprocessed"))
+            for p in cfg.preprocessed_dirs
+        ]
         names = [d.dataset for d in self.dirs]
         if len(set(names)) != len(names):
             raise ValueError(f"data.preprocessed_dirs name a dataset twice: {names}")
@@ -207,10 +211,13 @@ class PieDataModule(L.LightningDataModule):
         self.gene_union_ids = [
             np.asarray([union[gene] for gene in d.genes], dtype=np.int64) for d in self.dirs
         ]
-        sources = {name: read_source(resolve_path(p)) for name, p in cfg.source_dirs.items()}
+        sources = {
+            name: read_source(resolve_asset(p, kind="source"))
+            for name, p in cfg.source_dirs.items()
+        }
         self.source_dims = {name: src.meta.dim for name, src in sources.items()}
         self._lookup = SourceLookup(sources, load_aliases(resolve_path(cfg.aliases_path)))
-        self._gene_text = read_source(resolve_path(cfg.gene_text_dir))
+        self._gene_text = read_source(resolve_asset(cfg.gene_text_dir, kind="source"))
         if self._gene_text.meta.layout != "dense" or self._gene_text.meta.index != "gene":
             raise ValueError("data.gene_text_dir must be a dense, gene-indexed source")
         if stats is not None:
@@ -294,7 +301,10 @@ class PieDataModule(L.LightningDataModule):
         dirs = (
             self.dirs
             if ecfg is self.cfg
-            else [PreprocessedDir.open(resolve_path(p)) for p in ecfg.preprocessed_dirs]
+            else [
+                PreprocessedDir.open(resolve_asset(p, kind="preprocessed"))
+                for p in ecfg.preprocessed_dirs
+            ]
         )
         train_path = resolve_path(ecfg.split_dir) / TRAIN_JSON
         train_sha = sha256_file(train_path)

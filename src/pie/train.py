@@ -29,6 +29,7 @@ from pie.config import (
     SchedulerConfig,
     TrainConfig,
     TrainerConfig,
+    pinned_train_config,
     portable_train_config,
 )
 from pie.data.datamodule import DATA_STATS, DataStats, PieDataModule
@@ -473,11 +474,17 @@ def run_train(cfg: TrainConfig) -> Path:
     if cfg.logger.enabled:
         # Fail before the run-dir policy and the stats fit, not after them in _make_logger.
         require_env("WANDB_ENTITY", "WANDB_PROJECT")
-    configure_determinism(cfg.seed)
     run_dir = resolve_path(cfg.run_dir)
     rank = env_global_rank(cfg.trainer.devices)
     if rank == 0:
         prepare_run_dir(run_dir, resume=cfg.resume, overwrite=cfg.overwrite)
+    previous = None
+    if cfg.resume and (run_dir / CONFIG_FILE).is_file():
+        previous = TrainConfig.model_validate(
+            OmegaConf.to_container(OmegaConf.load(run_dir / CONFIG_FILE), resolve=False)
+        )
+    cfg = pinned_train_config(cfg, previous=previous)
+    configure_determinism(cfg.seed)
     pinned = _read_data_stats(run_dir) if cfg.resume else None
     datamodule = PieDataModule(cfg.data, run_dir, pinned, seed=cfg.seed)
     stats = datamodule.setup_stats(rank)

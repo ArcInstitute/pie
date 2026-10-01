@@ -17,6 +17,8 @@ knowledge-source embeddings of the perturbation, context and genes plus pooled t
   `pie-infer`.
 - `src/pie/config.py`: strict schema of train/eval/infer (unknown keys are errors); `utils.py`:
   `common.sh` loading, env checks, config composition, logging, determinism, hashing, atomic writes.
+- `src/pie/assets.py`: local/HF asset resolver, revision pinning, selective downloads,
+  repository locks and completion manifests under `PIE_DATA_ROOT/hf/`.
 - `src/pie/process/`: raw count h5ads to log1p expression h5ads and per-context DE parquets.
 - `src/pie/prep/`: labels and expression h5ads to a preprocessed dir (`config.py` is its schema).
 - `src/pie/sources/`: source format (`contract.py`), tool registry (`registry.py`), config schema
@@ -51,6 +53,24 @@ Every CLI takes Hydra-style `key=value` overrides on its config in `configs/` (`
 picked with `dataset=<name>`, `label_format=<name>` or `experiment=<name>`, unknown keys are errors,
 relative paths are relative to the repo root, and an existing output is an error unless you pass
 `overwrite=true`.
+
+Preprocessed dataset inputs (`data.preprocessed_dirs` in train; `preprocessed_dirs` in
+eval/infer/sources) and model source inputs (`data.source_dirs`, `data.gene_text_dir`) accept
+local paths or `hf://datasets/<owner>/<repo>[@revision]/<directory>` references. Bare repo IDs
+are local paths; use the explicit URI for HF. The canonical experiment overlays pin full HF
+commits for every dataset and source, including gene text. Dataset repos use `preprocessed/`;
+`arcinstitute/pie_sources` uses one directory per source name.
+
+HF assets download only the selected directory to
+`$PIE_DATA_ROOT/hf/datasets/<owner>/<repo>/<commit>/<directory>/`; download metadata, locks,
+revision records, completion manifests and the Xet transfer cache also stay under this root.
+Do not resolve HF references through `resolve_path` or turn them into `Path` before resolution:
+use `resolve_asset(value, kind="preprocessed"|"source")`. Config composition and checkpoint
+loading must stay free of network/download side effects. Training pins remote references before
+saving config/checkpoints; resume replays the previous run's commits. An unpinned revision resolves
+once per data root; use a new explicit commit for an update. Fully downloaded assets need no
+network. `HF_HUB_OFFLINE=1` refuses missing/incomplete assets. Authenticate when needed with
+`uv run hf auth login` or `HF_TOKEN` in the environment; never store tokens in configs/common.sh.
 
 `pie-process` turns raw count h5ads into the log1p expression h5ads and per-context DE parquets
 that `pie-prep` consumes: `dataset=<name>` selects a per-dataset overlay enabling the stages it
@@ -130,6 +150,10 @@ $PIE_CACHE_DIR/http/, embed/             downloads and resumable embedding progr
 ## Experiments
 
 Evaluate `best_auprc.ckpt` (maximum `val/binary_auprc`) on every test set.
+Both recipes fetch their pinned preprocessed datasets and knowledge sources automatically at
+runtime; `uv sync --frozen` is sufficient to use them. For distributed runs, a shared
+`PIE_DATA_ROOT` lets repository locks coordinate downloads across ranks and nodes. With local
+data roots, each node downloads its own assets. Run directories must still use shared storage.
 
 **replogle_wdataset**: Replogle only, four folds (hepg2, jurkat, k562, rpe1). A fold trains and
 validates on the other three cell lines and is tested in three settings: `unseen_ctx` (held-out

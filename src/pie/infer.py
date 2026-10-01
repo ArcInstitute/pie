@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from pie.assets import resolve_asset
 from pie.config import InferConfig
 from pie.predict import RowSource, predict, write_predictions_parquet
 from pie.utils import resolve_path
@@ -22,7 +23,7 @@ def run_infer(cfg: InferConfig) -> Path:
         raise FileExistsError(f"{output_path} exists; set overwrite=true to replace it")
     dirs: list[Path] | None = None
     if cfg.preprocessed_dirs is not None:
-        dirs = [resolve_path(p) for p in cfg.preprocessed_dirs]
+        dirs = [resolve_asset(p, kind="preprocessed") for p in cfg.preprocessed_dirs]
     rows = RowSource(cfg.rows_kind, resolve_path(cfg.rows_path))
     preds = predict(ckpt_path, rows, dirs, cfg.device, cfg.batch_size)
     out = write_predictions_parquet(preds, output_path)

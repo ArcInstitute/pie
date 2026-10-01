@@ -10,16 +10,17 @@ experiment_name: replogle_wdataset/${vars.fold}
 
 data:
   preprocessed_dirs:
-    - ${oc.env:PIE_DATA_ROOT}/replogle/preprocessed
+    - hf://datasets/arcinstitute/pie_replogle_nadig_essential@20c9faef76fc96fdc809871340bd93499413dfe7/preprocessed
   dataset_weights: null
   split_dir: data/splits/replogle_wdataset/unseen_ctx/${vars.fold}
   source_dirs:
-    esm2: ${oc.env:PIE_DATA_ROOT}/sources/esm2
-    ncbi_text: ${oc.env:PIE_DATA_ROOT}/sources/ncbi_text
-    string_space: ${oc.env:PIE_DATA_ROOT}/sources/string_space
-    depmap_gene_effect: ${oc.env:PIE_DATA_ROOT}/sources/depmap_gene_effect
-    context_text: ${oc.env:PIE_DATA_ROOT}/sources/context_text
-    perturbation_text: ${oc.env:PIE_DATA_ROOT}/sources/perturbation_text
+    esm2: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/esm2
+    ncbi_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/ncbi_text
+    string_space: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/string_space
+    depmap_gene_effect: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/depmap_gene_effect
+    context_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/context_text
+    perturbation_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/perturbation_text
+  gene_text_dir: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/gene_text
   delta_p:
     bin_width_fold_change: 1.1
   evidence:

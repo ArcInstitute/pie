@@ -289,6 +289,14 @@ _XDATASET_SOURCES = (
     *_WDATASET_SOURCES, "smiles", "l1000_tas", "prism_secondary", "jump_morphology",
 )
 _XDATASET_DATASETS = ("replogle", "tahoe", "jiang", "arc_vcc_25", "orion")
+_HF_DATASETS = {
+    "replogle": "pie_replogle_nadig_essential@20c9faef76fc96fdc809871340bd93499413dfe7",
+    "tahoe": "pie_tahoe100m@597d6ded9f9a148331388484ffb193489121c702",
+    "jiang": "pie_jiang@99242356dfcf58e049d867703c5743df8d1790bf",
+    "arc_vcc_25": "pie_arc_vcc_25@e7dda6065316959958b87583ddf0a15f6e69c37d",
+    "orion": "pie_x_atlas_orion@0950c8aa5ce5b33dc9d6f0c5eade3ae445ca0ffb",
+}
+_HF_SOURCES = "hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7"
 _XDATASET_WEIGHTS = {
     "replogle": 0.0, "tahoe": 0.68, "jiang": 0.01, "arc_vcc_25": 0.01, "orion": 0.3,
 }
@@ -347,11 +355,14 @@ def _experiment_golden(
         "overwrite": False,
         "resume": False,
         "data": {
-            "preprocessed_dirs": [f"{data_root}/{name}/preprocessed" for name in datasets],
+            "preprocessed_dirs": [
+                f"hf://datasets/arcinstitute/{_HF_DATASETS[name]}/preprocessed"
+                for name in datasets
+            ],
             "dataset_weights": weights,
             "split_dir": split_dir,
-            "source_dirs": {name: f"{data_root}/sources/{name}" for name in sources},
-            "gene_text_dir": f"{data_root}/sources/gene_text",
+            "source_dirs": {name: f"{_HF_SOURCES}/{name}" for name in sources},
+            "gene_text_dir": f"{_HF_SOURCES}/gene_text",
             "aliases_path": "data/sources/aliases.yaml",
             "delta_p": {
                 "bin_width_fold_change": bin_width,
@@ -465,8 +476,11 @@ def test_experiment_xdataset_split_dir_holds_every_eval_file(
 def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _experiment_roots(tmp_path, monkeypatch)
     cfg = compose_train_config(["experiment=replogle_xdataset"])
-    names = [Path(p).parent.name for p in cfg.data.preprocessed_dirs]
-    assert names == ["replogle", "tahoe", "jiang", "arc_vcc_25", "orion"]
+    assert cfg.data.preprocessed_dirs == [
+        f"hf://datasets/arcinstitute/{_HF_DATASETS[name]}/preprocessed"
+        for name in _XDATASET_DATASETS
+    ]
+    names = list(_XDATASET_DATASETS)
     # The sorted names seed the sampler and order the evidence donors.
     assert sorted(names) == ["arc_vcc_25", "jiang", "orion", "replogle", "tahoe"]
     assert sorted(cfg.data.dataset_weights or {}) == sorted(names)

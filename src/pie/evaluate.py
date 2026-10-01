@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from pie.assets import resolve_asset
 from pie.config import EvalConfig
 from pie.data.preprocessed import PreprocessedDir
 from pie.metrics import METRIC_KEYS, PAIR_METRIC_KEYS, ScoreResult, ScoringInputs, score
@@ -95,8 +96,10 @@ def run_eval(cfg: EvalConfig) -> Path:
     loaded = load_checkpoint(ckpt_path)
     override: list[Path] | None = None
     if cfg.preprocessed_dirs is not None:
-        override = [resolve_path(p) for p in cfg.preprocessed_dirs]
-    paths = override or [Path(p) for p in loaded.config.data.preprocessed_dirs]
+        override = [resolve_asset(p, kind="preprocessed") for p in cfg.preprocessed_dirs]
+    paths = override or [
+        resolve_asset(p, kind="preprocessed") for p in loaded.config.data.preprocessed_dirs
+    ]
     dirs = {d.dataset: d for d in (PreprocessedDir.open(p) for p in paths)}
 
     rows = RowSource("split", resolve_path(cfg.split_path))

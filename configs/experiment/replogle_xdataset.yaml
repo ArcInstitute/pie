@@ -6,11 +6,11 @@ experiment_name: replogle_xdataset
 
 data:
   preprocessed_dirs:
-    - ${oc.env:PIE_DATA_ROOT}/replogle/preprocessed
-    - ${oc.env:PIE_DATA_ROOT}/tahoe/preprocessed
-    - ${oc.env:PIE_DATA_ROOT}/jiang/preprocessed
-    - ${oc.env:PIE_DATA_ROOT}/arc_vcc_25/preprocessed
-    - ${oc.env:PIE_DATA_ROOT}/orion/preprocessed
+    - hf://datasets/arcinstitute/pie_replogle_nadig_essential@20c9faef76fc96fdc809871340bd93499413dfe7/preprocessed
+    - hf://datasets/arcinstitute/pie_tahoe100m@597d6ded9f9a148331388484ffb193489121c702/preprocessed
+    - hf://datasets/arcinstitute/pie_jiang@99242356dfcf58e049d867703c5743df8d1790bf/preprocessed
+    - hf://datasets/arcinstitute/pie_arc_vcc_25@e7dda6065316959958b87583ddf0a15f6e69c37d/preprocessed
+    - hf://datasets/arcinstitute/pie_x_atlas_orion@0950c8aa5ce5b33dc9d6f0c5eade3ae445ca0ffb/preprocessed
   dataset_weights:
     replogle: 0.0
     tahoe: 0.68
@@ -19,16 +19,17 @@ data:
     orion: 0.3
   split_dir: data/splits/replogle_xdataset
   source_dirs:
-    esm2: ${oc.env:PIE_DATA_ROOT}/sources/esm2
-    ncbi_text: ${oc.env:PIE_DATA_ROOT}/sources/ncbi_text
-    string_space: ${oc.env:PIE_DATA_ROOT}/sources/string_space
-    depmap_gene_effect: ${oc.env:PIE_DATA_ROOT}/sources/depmap_gene_effect
-    context_text: ${oc.env:PIE_DATA_ROOT}/sources/context_text
-    perturbation_text: ${oc.env:PIE_DATA_ROOT}/sources/perturbation_text
-    smiles: ${oc.env:PIE_DATA_ROOT}/sources/smiles
-    l1000_tas: ${oc.env:PIE_DATA_ROOT}/sources/l1000_tas
-    prism_secondary: ${oc.env:PIE_DATA_ROOT}/sources/prism_secondary
-    jump_morphology: ${oc.env:PIE_DATA_ROOT}/sources/jump_morphology
+    esm2: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/esm2
+    ncbi_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/ncbi_text
+    string_space: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/string_space
+    depmap_gene_effect: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/depmap_gene_effect
+    context_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/context_text
+    perturbation_text: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/perturbation_text
+    smiles: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/smiles
+    l1000_tas: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/l1000_tas
+    prism_secondary: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/prism_secondary
+    jump_morphology: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/jump_morphology
+  gene_text_dir: hf://datasets/arcinstitute/pie_sources@cb1aaa4e7655605bdc70a9bd77bbd62016b8c7d7/gene_text
   delta_p:
     bin_width_fold_change: 1.01
   evidence:
