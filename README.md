@@ -2,6 +2,8 @@
 
 PIE is a perturbation effect prediction model that generalizes to unseen biological context, perturbations and combinations of both. It is based on the Perceiver IO architecture (Jaegle et al., 2022), and leverages curated Knowledge Sources, mean of control cells on context query and perturbation response evidence from contexts and perturbations in the train set. 
 
+Data and Knowledge Sources (🤗 Hugging Face): [PIE collection](https://huggingface.co/collections/arcinstitute/pie)
+
 ## Getting Started
 
 This codebase uses `uv` for package management. 
