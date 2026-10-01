@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import fcntl
 import json
 import logging
 import os
@@ -15,6 +14,7 @@ from typing import Literal
 from urllib.parse import quote, unquote
 
 import numpy as np
+from filelock import FileLock
 from huggingface_hub import HfApi, snapshot_download
 
 from pie.utils import require_env, resolve_path, sha256_bytes, sha256_file, write_json
@@ -75,13 +75,9 @@ def _repo_lock(root: Path, repo_id: str) -> Iterator[None]:
     locks = root / ".locks"
     locks.mkdir(parents=True, exist_ok=True)
     key = sha256_bytes(repo_id.encode())
-    with (locks / f"{key}.lock").open("a") as handle:
-        log.info("waiting for HF asset lock: %s", repo_id)
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    log.info("waiting for HF asset lock: %s", repo_id)
+    with FileLock(locks / f"{key}.lock"):
+        yield
 
 
 def _offline() -> bool:
@@ -94,8 +90,23 @@ def _pin(ref: HubReference, root: Path) -> HubReference:
     key = sha256_bytes(f"{ref.repo_id}@{ref.revision}".encode())
     record = root / ".refs" / f"{key}.json"
     if record.is_file():
-        payload = json.loads(record.read_text())
-        commit = payload["commit"]
+        try:
+            payload = json.loads(record.read_text())
+            if not isinstance(payload, dict):
+                raise ValueError("revision record must be an object")
+            commit = payload["commit"]
+            if (
+                payload.get("repo_id") != ref.repo_id
+                or payload.get("revision") != ref.revision
+                or not isinstance(commit, str)
+                or not _SHA.fullmatch(commit)
+            ):
+                raise ValueError("revision record does not match the requested reference")
+        except (OSError, ValueError, KeyError) as exc:
+            raise ValueError(
+                f"invalid HF revision record {record}; use an explicit commit from a saved "
+                "run config, or intentionally delete the record to resolve the revision again"
+            ) from exc
     else:
         if _offline():
             raise FileNotFoundError(f"HF asset {ref.uri} is not pinned locally (offline mode)")
@@ -111,8 +122,6 @@ def _pin(ref: HubReference, root: Path) -> HubReference:
             raise ValueError(f"HF returned an invalid commit for {ref.uri}: {commit!r}")
         record.parent.mkdir(parents=True, exist_ok=True)
         write_json(record, {"repo_id": ref.repo_id, "revision": ref.revision, "commit": commit})
-    if not isinstance(commit, str) or not _SHA.fullmatch(commit):
-        raise ValueError(f"invalid HF commit in {record}")
     return replace(ref, revision=commit)
 
 

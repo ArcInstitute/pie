@@ -43,6 +43,8 @@ commit, tag, or branch; omit it to select `main`. Revisions containing `/` must 
 (for example `refs%2Fpr%2F1`). Unpinned references resolve once per data root; PIE records the
 immutable commit in the run config and checkpoints. Resume, evaluation, and inference use the
 saved commit. To select newer data, provide its new commit explicitly in a new run.
+If a local revision record is corrupt, PIE asks for an explicit commit rather than silently
+fetching a potentially newer version of the data.
 
 All downloaded assets and their transfer caches live under `PIE_DATA_ROOT`:
 

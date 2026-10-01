@@ -1087,6 +1087,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "anndata" },
+    { name = "filelock" },
     { name = "h5py" },
     { name = "huggingface-hub" },
     { name = "hydra-core" },
@@ -1126,6 +1127,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anndata", specifier = "==0.13.2" },
+    { name = "filelock", specifier = "==4.0.6" },
     { name = "gpudge", extras = ["fast"], marker = "extra == 'process'", git = "https://github.com/ArcInstitute/gpudge.git?rev=bfbde26903b5580a4cf7692985f7b3c20f3bfebd" },
     { name = "h5py", specifier = "==3.16.0" },
     { name = "huggingface-hub", specifier = "==1.21.0" },

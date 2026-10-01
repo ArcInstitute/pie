@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import fnmatch
-import multiprocessing
+import os
 import shutil
+import subprocess
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -69,6 +71,24 @@ def test_local_paths_need_no_hub_or_data_root(monkeypatch: pytest.MonkeyPatch) -
     assert assets.pin_asset_reference("data/local") == "data/local"
 
 
+def test_resolver_imports_on_platform_without_fcntl() -> None:
+    script = '''
+import builtins
+original_import = builtins.__import__
+def platform_import(name, *args, **kwargs):
+    if name == "fcntl":
+        raise ImportError("fcntl is unavailable on this platform")
+    return original_import(name, *args, **kwargs)
+builtins.__import__ = platform_import
+import pie.assets
+'''
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, timeout=20,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")},
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_downloads_selected_directory_and_reuses_it_offline(hub: Any) -> None:
     reference = f"{BASE}/preprocessed"
     path = assets.resolve_asset(reference, kind="preprocessed")
@@ -107,6 +127,19 @@ def test_tag_is_pinned_and_portable(hub: Any) -> None:
     assert assets.pin_asset_reference(reference) == f"{BASE}/preprocessed"
     assert hub.lookups[0]["revision"] == "v1"
     assert to_portable(reference) == reference
+
+
+@pytest.mark.parametrize("content", ["", "not json", "[]", "{}", '{"commit":"bad"}'])
+def test_corrupt_revision_record_requires_explicit_commit(content: str, hub: Any) -> None:
+    reference = f"hf://datasets/{REPO}/preprocessed"
+    assets.pin_asset_reference(reference)
+    record = next((hub.root / "hf" / ".refs").glob("*.json"))
+    record.write_text(content)
+    with pytest.raises(ValueError, match="explicit commit"):
+        assets.pin_asset_reference(reference)
+    # Re-resolving main here could change the data silently. Pinned references bypass the record.
+    assert len(hub.lookups) == 1
+    assert assets.pin_asset_reference(f"{BASE}/preprocessed") == f"{BASE}/preprocessed"
 
 
 @pytest.mark.parametrize("reference", [
@@ -220,37 +253,48 @@ def test_resume_replays_prior_commit_without_resolving_branch(
 
 
 def test_processes_sharing_data_root_download_once(
-    hub: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    hub: Any, tmp_path: Path
 ) -> None:
     count = tmp_path / "download_calls.txt"
-    context = multiprocessing.get_context("fork")
-    results = context.Queue()
+    # Fresh interpreters exercise process locking without inheriting mocks or using Unix fork.
+    script = f'''
+import shutil
+import time
+from pathlib import Path
+from pie import assets
 
-    def download(**kwargs: Any) -> str:
-        with count.open("a") as handle:
-            handle.write("download\n")
-        time.sleep(0.05)
-        return hub.download(**kwargs)
+def download(**kwargs):
+    with Path({str(count)!r}).open("a") as handle:
+        handle.write("download\\n")
+    time.sleep(0.05)
+    out = Path(kwargs["local_dir"]) / "preprocessed"
+    shutil.copytree(Path({str(hub.remote)!r}) / "preprocessed", out, dirs_exist_ok=True)
+    return str(out.parent)
 
-    def resolve() -> None:
-        results.put(str(assets.resolve_asset(f"{BASE}/preprocessed", kind="preprocessed")))
-
-    monkeypatch.setattr(assets, "snapshot_download", download)
-    children = [context.Process(target=resolve, daemon=True) for _ in range(3)]
+assets.snapshot_download = download
+print(assets.resolve_asset({f"{BASE}/preprocessed"!r}, kind="preprocessed"))
+'''
+    env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")}
+    children = [
+        subprocess.Popen(
+            [sys.executable, "-c", script], env=env,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        for _ in range(3)
+    ]
     try:
+        outputs = []
         for child in children:
-            child.start()
-        for child in children:
-            child.join(timeout=10)
-            assert child.exitcode == 0
-        assert len({results.get(timeout=1) for _ in children}) == 1
+            stdout, stderr = child.communicate(timeout=20)
+            assert child.returncode == 0, stderr
+            outputs.append(stdout.strip())
+        assert len(set(outputs)) == 1
         assert count.read_text() == "download\n"
     finally:
         for child in children:
-            if child.is_alive():
+            if child.poll() is None:
                 child.terminate()
-                child.join(timeout=1)
-        results.close()
+            child.communicate(timeout=5)
 
 
 def test_source_build_and_verify_accept_remote_datasets(

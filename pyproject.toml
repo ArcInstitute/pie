@@ -5,6 +5,7 @@ description = "PIE: predicting transcriptional responses to perturbations from b
 requires-python = "==3.12.*"
 dependencies = [
     "anndata==0.13.2",
+    "filelock==4.0.6",
     "h5py==3.16.0",
     "huggingface-hub==1.21.0",
     "hydra-core==1.3.3",
