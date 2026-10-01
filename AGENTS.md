@@ -191,9 +191,6 @@ done
 ## Conventions
 
 - `tests/` mirrors `src/pie/`; tests run on CPU with synthetic fixtures: `uv run pytest -q`.
-- Submit Slurm jobs for this project only to the `preemptible` partition.
-- Keep `docs/` untracked in the main checkout; every worktree should symlink to that directory.
-  Its local `.gitignore` contains `*` to ignore all contents, including itself.
 - Lint with `uv run ruff check .` (100 columns); type-check with `uv run mypy src`.
 - Direct dependencies are pinned `==` in `pyproject.toml` with `uv.lock` committed (`uv lock`).
 - Configs are strict: each value lives once in YAML, and a new key needs a schema field.
