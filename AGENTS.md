@@ -59,7 +59,7 @@ eval/infer/sources) and model source inputs (`data.source_dirs`, `data.gene_text
 local paths or `hf://datasets/<owner>/<repo>[@revision]/<directory>` references. Bare repo IDs
 are local paths; use the explicit URI for HF. The canonical experiment overlays pin full HF
 commits for every dataset and source, including gene text. Dataset repos use `preprocessed/`;
-`arcinstitute/pie_sources` uses one directory per source name.
+`arcinstitute/PIE_sources` uses one directory per source name.
 
 HF assets download only the selected directory to
 `$PIE_DATA_ROOT/hf/datasets/<owner>/<repo>/<commit>/<directory>/`; download metadata, locks,
