@@ -150,4 +150,4 @@ done
 PIE is released under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0
 International](https://creativecommons.org/licenses/by-nc-sa/4.0/) license (CC BY-NC-SA 4.0).
 You may use, share and adapt it for non-commercial purposes with attribution, and adaptations
-must be shared under the same license. See [LICENSE](LICENSE) for the full text.
+must be shared under the same license. See [LICENSE.md](LICENSE.md) for the full text.
