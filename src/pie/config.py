@@ -83,7 +83,9 @@ class TrainConfig(StrictModel):
 
 def compose_train_config(overrides: Sequence[str]) -> TrainConfig:
     """Compose configs/train.yaml (an experiment overlay comes in via `experiment=<name>`)."""
-    return TrainConfig.model_validate(compose_config("train", overrides))
+    cfg = TrainConfig.model_validate(compose_config("train", overrides))
+    split_dir = legacy_split_path(cfg.data.split_dir)
+    return cfg.model_copy(update={"data": cfg.data.model_copy(update={"split_dir": split_dir})})
 
 
 def _map_paths(cfg: TrainConfig, convert: Callable[[str], str]) -> TrainConfig:
@@ -112,6 +114,16 @@ def _resolved(path: str) -> str:
 
 PIE_SPLITS_URI = "hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50"
 _LEGACY_SPLITS = "data/splits/"
+
+
+def legacy_split_path(value: str) -> str:
+    """A repo-era `data/splits/<rest>` path that does not exist here -> PIE_SPLITS_URI/<rest>.
+
+    An existing local path is kept, so a checkout or copy that still holds the files wins.
+    """
+    if value.startswith(_LEGACY_SPLITS) and not resolve_path(value).exists():
+        return f"{PIE_SPLITS_URI}/{value.removeprefix(_LEGACY_SPLITS)}"
+    return value
 
 
 def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
@@ -208,9 +220,13 @@ class InferConfig(StrictModel):
 
 def compose_eval_config(overrides: Sequence[str]) -> EvalConfig:
     """Compose configs/eval.yaml (+overrides), resolve, validate."""
-    return EvalConfig.model_validate(compose_config("eval", overrides))
+    cfg = EvalConfig.model_validate(compose_config("eval", overrides))
+    return cfg.model_copy(update={"split_path": legacy_split_path(cfg.split_path)})
 
 
 def compose_infer_config(overrides: Sequence[str]) -> InferConfig:
     """Compose configs/infer.yaml (+overrides), resolve, validate."""
-    return InferConfig.model_validate(compose_config("infer", overrides))
+    cfg = InferConfig.model_validate(compose_config("infer", overrides))
+    if cfg.rows_kind != "split":
+        return cfg
+    return cfg.model_copy(update={"rows_path": legacy_split_path(cfg.rows_path)})

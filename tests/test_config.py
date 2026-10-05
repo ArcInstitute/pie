@@ -545,3 +545,41 @@ def test_experiment_split_dirs_are_pinned_pie_splits(
         assert cfg.data.split_dir == f"{uri}/replogle_wdataset/unseen_ctx/{fold}"
     cfg = compose_train_config(["experiment=replogle_xdataset"])
     assert cfg.data.split_dir == f"{uri}/replogle_xdataset"
+
+
+def test_legacy_split_path_maps_to_pie_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    rest = "replogle_xdataset/test_seen.json"
+    uri = config_mod.PIE_SPLITS_URI
+    assert config_mod.legacy_split_path(f"data/splits/{rest}") == f"{uri}/{rest}"
+    assert config_mod.legacy_split_path("other/test.json") == "other/test.json"
+
+
+def test_existing_local_legacy_split_path_is_kept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "splits" / "x").mkdir(parents=True)
+    assert config_mod.legacy_split_path("data/splits/x") == "data/splits/x"
+
+
+def test_eval_train_and_infer_configs_map_legacy_split_paths(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.chdir(tmp_path)
+    uri = config_mod.PIE_SPLITS_URI
+    old = "data/splits/replogle_xdataset"
+    cfg = compose_eval_config(
+        ["experiment_name=x", f"split_path={old}/test_seen.json", "row_set=s"]
+    )
+    assert cfg.split_path == f"{uri}/replogle_xdataset/test_seen.json"
+    train = compose_train_config([*_required(tiny_data), f"data.split_dir={old}"])
+    assert train.data.split_dir == f"{uri}/replogle_xdataset"
+    rows = ["experiment_name=x", f"rows_path={old}/a.json", "output_path=o.parquet"]
+    infer = config_mod.compose_infer_config([*rows, "rows_kind=split"])
+    assert infer.rows_path == f"{uri}/replogle_xdataset/a.json"
+    query = config_mod.compose_infer_config([*rows, "rows_kind=query"])
+    assert query.rows_path == f"{old}/a.json"
