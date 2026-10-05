@@ -15,7 +15,7 @@ Pick one line; each extra also installs the base package.
 pip install arc-pie                       # base package (or: uv tool install arc-pie)
 pip install "arc-pie[sources]"            # with the knowledge-source building tools
 pip install "arc-pie[process]"            # with the GPU differential-expression stage (gpudge)
-pip install "arc-pie[sources,process]"    # with both
+pip install "arc-pie[all]"                # with every extra
 ```
 
 The package is `arc-pie`; the command is `pie`. Python 3.12 is required.

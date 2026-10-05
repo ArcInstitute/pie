@@ -20,8 +20,9 @@ def test_distribution_name_and_version() -> None:
 
 def test_no_exact_or_direct_url_dependencies() -> None:
     deps = list(PROJECT["dependencies"])
-    for extra in PROJECT["optional-dependencies"].values():
-        deps += extra
+    for name, extra in PROJECT["optional-dependencies"].items():
+        if name != "all":  # `all` names the package's own extras
+            deps += extra
     assert not [d for d in deps if "==" in d or " @ " in d]
     assert all(">=" in d for d in deps)
 
@@ -34,3 +35,8 @@ def test_packaged_resources() -> None:
     assert (files("pie") / "configs" / "train.yaml").is_file()
     assert (files("pie") / "configs" / "experiment" / "replogle_xdataset.yaml").is_file()
     assert (files("pie.sources") / "curated_aliases.yaml").is_file()
+
+
+def test_all_extra_installs_every_extra() -> None:
+    extras = PROJECT["optional-dependencies"]
+    assert extras["all"] == [f"arc-pie[{','.join(sorted(set(extras) - {'all'}))}]"]
