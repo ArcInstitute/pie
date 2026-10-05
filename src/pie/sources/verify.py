@@ -1,4 +1,4 @@
-"""pie-sources mode=verify: key coverage of datasets by sources, and diffs to a reference."""
+"""pie sources mode=verify: key coverage of datasets by sources, and diffs to a reference."""
 
 from __future__ import annotations
 

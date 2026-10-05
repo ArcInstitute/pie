@@ -1,4 +1,4 @@
-# pie-infer: predict query rows (or a split file) with a checkpoint.
+# pie infer: predict query rows (or a split file) with a checkpoint.
 defaults:
   - _self_
 

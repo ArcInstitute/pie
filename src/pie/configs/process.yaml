@@ -1,4 +1,4 @@
-# pie-process: raw count h5ads -> knockdown-filtered counts -> log1p expression h5ads -> DE parquets.
+# pie process: raw count h5ads -> knockdown-filtered counts -> log1p expression h5ads -> DE parquets.
 # Pick a dataset overlay with `dataset=<name>` (configs/process/dataset/<name>.yaml). Give `input`
 # (a glob or a list of count h5ads) and each enabled stage's `output_dir` on the command line.
 # Relative paths are relative to the current directory.

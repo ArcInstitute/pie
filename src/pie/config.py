@@ -170,7 +170,7 @@ _ROW_SET = re.compile(r"[A-Za-z0-9_\-][A-Za-z0-9_.\-]*")
 
 
 class EvalConfig(StrictModel):
-    """pie-eval (configs/eval.yaml)."""
+    """pie eval (configs/eval.yaml)."""
 
     experiment_name: str
     run_dir: str
@@ -192,7 +192,7 @@ class EvalConfig(StrictModel):
 
 
 class InferConfig(StrictModel):
-    """pie-infer (configs/infer.yaml)."""
+    """pie infer (configs/infer.yaml)."""
 
     experiment_name: str
     run_dir: str

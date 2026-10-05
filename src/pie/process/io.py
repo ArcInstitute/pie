@@ -1,4 +1,4 @@
-"""File helpers for pie-process: input globs, context masks and atomic, uncompressed writes."""
+"""File helpers for pie process: input globs, context masks and atomic, uncompressed writes."""
 
 from __future__ import annotations
 

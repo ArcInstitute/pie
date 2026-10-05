@@ -1,4 +1,4 @@
-# pie-eval: score a checkpoint on one split file.
+# pie eval: score a checkpoint on one split file.
 defaults:
   - _self_
 

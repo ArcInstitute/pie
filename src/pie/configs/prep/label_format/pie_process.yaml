@@ -1,5 +1,5 @@
 # @package _global_
-# pie-process DE parquets: one file per context (the file stem), gpudge columns, log2 fold change.
+# pie process DE parquets: one file per context (the file stem), gpudge columns, log2 fold change.
 label:
   context_from: stem
   context_col: null

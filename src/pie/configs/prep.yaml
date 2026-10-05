@@ -1,4 +1,4 @@
-# pie-prep: DE label tables + expression h5ads -> one preprocessed dataset dir.
+# pie prep: DE label tables + expression h5ads -> one preprocessed dataset dir.
 # `dataset=<name>` picks configs/prep/dataset/<name>.yaml (the h5ad obs columns and the label
 # rewrites); `label_format=<name>` picks the label-table columns (configs/prep/label_format/).
 # Give `labels`, `h5ad` and `output_dir` on the command line; `genes` fixes the gene axis.

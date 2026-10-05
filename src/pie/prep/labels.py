@@ -1,4 +1,4 @@
-"""pie-prep: DE label tables plus expression h5ads -> one preprocessed dataset dir.
+"""pie prep: DE label tables plus expression h5ads -> one preprocessed dataset dir.
 
 A label table (CSV or parquet) has one row per (context, perturbation, gene) with an FDR and a
 fold change. The expression h5ads give the pseudobulk means behind delta_p and ctrl_means.

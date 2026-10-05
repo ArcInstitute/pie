@@ -1,4 +1,4 @@
-"""pie-eval: predict a split file with a checkpoint, score the rows, write the metric tables."""
+"""pie eval: predict a split file with a checkpoint, score the rows, write the metric tables."""
 
 from __future__ import annotations
 

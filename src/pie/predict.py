@@ -1,4 +1,4 @@
-"""Checkpoint loading and batched prediction shared by pie-eval and pie-infer."""
+"""Checkpoint loading and batched prediction shared by pie eval and pie infer."""
 
 from __future__ import annotations
 

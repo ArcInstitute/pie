@@ -1,4 +1,4 @@
-# pie-sources: build knowledge sources into <output_root>/<name>/ for the datasets in
+# pie sources: build knowledge sources into <output_root>/<name>/ for the datasets in
 # preprocessed_dirs. `tools` adds and orders dependencies unless with_deps=false. Builder
 # settings live under `options`. Relative paths are relative to the current directory.
 tools: ???

@@ -1,4 +1,4 @@
-"""On-disk format of a preprocessed dataset dir: written by pie-prep, read by the runtime."""
+"""On-disk format of a preprocessed dataset dir: written by pie prep, read by the runtime."""
 
 from __future__ import annotations
 

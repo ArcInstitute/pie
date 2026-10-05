@@ -1,4 +1,4 @@
-"""pie-sources configuration: configs/sources.yaml and key=value overrides."""
+"""pie sources configuration: configs/sources.yaml and key=value overrides."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ class VerifyConfig(StrictModel):
 
 
 class SourcesConfig(StrictModel):
-    """The composed pie-sources config."""
+    """The composed pie sources config."""
 
     tools: list[str]
     with_deps: bool

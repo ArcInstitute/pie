@@ -1,4 +1,4 @@
-"""The pie-sources tool registry: tool entries, dependency order and the run driver."""
+"""The pie sources tool registry: tool entries, dependency order and the run driver."""
 
 from __future__ import annotations
 

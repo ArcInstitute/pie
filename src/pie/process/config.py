@@ -1,4 +1,4 @@
-"""pie-process configuration: configs/process.yaml, a dataset overlay and key=value overrides."""
+"""pie process configuration: configs/process.yaml, a dataset overlay and key=value overrides."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ class DEConfig(StrictModel):
 
 
 class ProcessConfig(StrictModel):
-    """The composed pie-process config."""
+    """The composed pie process config."""
 
     input: str | list[str]
     overwrite: bool

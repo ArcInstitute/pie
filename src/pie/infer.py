@@ -1,4 +1,4 @@
-"""pie-infer: predictions for query rows (controls-only dirs) or a split file, as parquet."""
+"""pie infer: predictions for query rows (controls-only dirs) or a split file, as parquet."""
 
 from __future__ import annotations
 

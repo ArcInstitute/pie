@@ -1,4 +1,4 @@
-"""pie-prep configuration: configs/prep.yaml, a dataset and a label-format overlay, overrides."""
+"""pie prep configuration: configs/prep.yaml, a dataset and a label-format overlay, overrides."""
 
 from __future__ import annotations
 
@@ -49,7 +49,7 @@ class ObsConfig(StrictModel):
 
 
 class PrepConfig(StrictModel):
-    """The composed pie-prep config."""
+    """The composed pie prep config."""
 
     name: str
     labels: str | None

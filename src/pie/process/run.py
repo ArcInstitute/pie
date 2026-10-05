@@ -1,4 +1,4 @@
-"""pie-process orchestration: filter -> normalize -> de, each stage optional."""
+"""pie process orchestration: filter -> normalize -> de, each stage optional."""
 
 from __future__ import annotations
 
