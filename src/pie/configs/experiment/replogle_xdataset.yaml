@@ -6,11 +6,11 @@ experiment_name: replogle_xdataset
 
 data:
   preprocessed_dirs:
-    - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@f243f5473b68c7b62422e22645277835f9b04d0d/preprocessed
-    - hf://datasets/arcinstitute/PIE_tahoe100m@8f003b086289aecfa6f2f07e3ba49738f69fa69b/preprocessed
-    - hf://datasets/arcinstitute/PIE_jiang@bcf4ceedd2e1232e8a3a362c1a10b1c49c3585ac/preprocessed
-    - hf://datasets/arcinstitute/PIE_arc_vcc_25@fe629a02e7d584c4b6fd0f9ea0865aa584cb854f/preprocessed
-    - hf://datasets/arcinstitute/PIE_x_atlas_orion@516a10f46461f168cc5dde5c3b449e9c45c70b8f/preprocessed
+    - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@d4b7b6bbe7ea4fb0ad38cbdec9c4fe7dd223437f/preprocessed
+    - hf://datasets/arcinstitute/PIE_tahoe100m@e57e281af702851aff1415f28a2765060520756a/preprocessed
+    - hf://datasets/arcinstitute/PIE_jiang@2d00d5dfea75ca8be6ba1c9c3cc212c9b232b650/preprocessed
+    - hf://datasets/arcinstitute/PIE_arc_vcc_25@8fcf784b63783dfedebdc78dcf25deaa7361082e/preprocessed
+    - hf://datasets/arcinstitute/PIE_x_atlas_orion@2eed5bcc3c546f9f38844a670f7d331ce1dedd75/preprocessed
   dataset_weights:
     replogle: 0.0
     tahoe: 0.68
@@ -19,17 +19,17 @@ data:
     orion: 0.3
   split_dir: hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50/replogle_xdataset
   source_dirs:
-    esm2: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/esm2
-    ncbi_text: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/ncbi_text
-    string_space: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/string_space
-    depmap_gene_effect: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/depmap_gene_effect
-    context_text: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/context_text
-    perturbation_text: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/perturbation_text
-    smiles: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/smiles
-    l1000_tas: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/l1000_tas
-    prism_secondary: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/prism_secondary
-    jump_morphology: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/jump_morphology
-  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/gene_text
+    esm2: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/esm2
+    ncbi_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/ncbi_text
+    string_space: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/string_space
+    depmap_gene_effect: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/depmap_gene_effect
+    context_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/context_text
+    perturbation_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/perturbation_text
+    smiles: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/smiles
+    l1000_tas: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/l1000_tas
+    prism_secondary: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/prism_secondary
+    jump_morphology: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/jump_morphology
+  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/gene_text
   delta_p:
     bin_width_fold_change: 1.01
   evidence:

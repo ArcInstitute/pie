@@ -318,13 +318,13 @@ _XDATASET_SOURCES = (
 )
 _XDATASET_DATASETS = ("replogle", "tahoe", "jiang", "arc_vcc_25", "orion")
 _HF_DATASETS = {
-    "replogle": "PIE_replogle_nadig_essential@f243f5473b68c7b62422e22645277835f9b04d0d",
-    "tahoe": "PIE_tahoe100m@8f003b086289aecfa6f2f07e3ba49738f69fa69b",
-    "jiang": "PIE_jiang@bcf4ceedd2e1232e8a3a362c1a10b1c49c3585ac",
-    "arc_vcc_25": "PIE_arc_vcc_25@fe629a02e7d584c4b6fd0f9ea0865aa584cb854f",
-    "orion": "PIE_x_atlas_orion@516a10f46461f168cc5dde5c3b449e9c45c70b8f",
+    "replogle": "PIE_replogle_nadig_essential@d4b7b6bbe7ea4fb0ad38cbdec9c4fe7dd223437f",
+    "tahoe": "PIE_tahoe100m@e57e281af702851aff1415f28a2765060520756a",
+    "jiang": "PIE_jiang@2d00d5dfea75ca8be6ba1c9c3cc212c9b232b650",
+    "arc_vcc_25": "PIE_arc_vcc_25@8fcf784b63783dfedebdc78dcf25deaa7361082e",
+    "orion": "PIE_x_atlas_orion@2eed5bcc3c546f9f38844a670f7d331ce1dedd75",
 }
-_HF_SOURCES = "hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37"
+_HF_SOURCES = "hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26"
 _XDATASET_WEIGHTS = {
     "replogle": 0.0, "tahoe": 0.68, "jiang": 0.01, "arc_vcc_25": 0.01, "orion": 0.3,
 }

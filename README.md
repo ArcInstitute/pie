@@ -35,11 +35,11 @@ Dataset and source inputs accept local paths or explicit HF references, and you 
 ```yaml
 data:
   preprocessed_dirs:
-    - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@f243f5473b68c7b62422e22645277835f9b04d0d/preprocessed
+    - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@d4b7b6bbe7ea4fb0ad38cbdec9c4fe7dd223437f/preprocessed
     - /path/to/my_screen/preprocessed
   source_dirs:
-    esm2: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/esm2
-  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/gene_text
+    esm2: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/esm2
+  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/gene_text
 ```
 
 The syntax is `hf://datasets/<owner>/<repo>[@revision]/<directory>`. A revision can be a full
