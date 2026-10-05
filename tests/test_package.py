@@ -40,3 +40,8 @@ def test_packaged_resources() -> None:
 def test_all_extra_installs_every_extra() -> None:
     extras = PROJECT["optional-dependencies"]
     assert extras["all"] == [f"arc-pie[{','.join(sorted(set(extras) - {'all'}))}]"]
+
+
+def test_development_status_is_stable() -> None:
+    status = [c for c in PROJECT["classifiers"] if c.startswith("Development Status")]
+    assert status == ["Development Status :: 5 - Production/Stable"]
