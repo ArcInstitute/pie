@@ -39,6 +39,8 @@ Issues = "https://github.com/ArcInstitute/pie/issues"
 "Data and models" = "https://huggingface.co/collections/arcinstitute/pie"
 
 [project.optional-dependencies]
+# `all` installs every extra below
+all = ["arc-pie[process,sources]"]
 process = ["gpudge[fast]>=0.9.1,<0.10"]
 sources = [
     "openai>=2.44.0,<3",

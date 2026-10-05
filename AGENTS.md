@@ -36,7 +36,7 @@ knowledge-source embeddings of the perturbation, context and genes plus pooled t
 ## Setup
 
 A checkout reproduces the paper environment (`uv.lock`); users can also `pip install arc-pie`
-(extras `[sources]`, `[process]`).
+(extras `[sources]`, `[process]`, or `[all]` for both).
 
 ```bash
 uv sync --frozen                    # runtime and dev tools
