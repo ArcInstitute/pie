@@ -17,7 +17,7 @@ data:
     jiang: 0.01
     arc_vcc_25: 0.01
     orion: 0.3
-  split_dir: data/splits/replogle_xdataset
+  split_dir: hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50/replogle_xdataset
   source_dirs:
     esm2: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/esm2
     ncbi_text: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/ncbi_text

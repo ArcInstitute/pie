@@ -19,7 +19,7 @@ import torch
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from pie.config import TrainConfig, resolved_train_config
+from pie.config import TrainConfig, load_saved_train_config, resolved_train_config
 from pie.data.datamodule import DataStats, PieDataModule
 from pie.data.dataset import Batch, GeneGroup, RowRef, collate
 from pie.model import PieModel, readout
@@ -78,7 +78,7 @@ def load_checkpoint(ckpt_path: Path) -> LoadedCheckpoint:
             f"{ckpt_path}: state_dict keys without the {STATE_PREFIX!r} prefix: {foreign[:5]}"
         )
     return LoadedCheckpoint(
-        config=resolved_train_config(TrainConfig.model_validate(block["config"])),
+        config=resolved_train_config(load_saved_train_config(block["config"])),
         stats=DataStats.model_validate(block["data_stats"]),
         state_dict={key[len(STATE_PREFIX) :]: value for key, value in state.items()},
     )

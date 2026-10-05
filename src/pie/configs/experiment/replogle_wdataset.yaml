@@ -12,7 +12,7 @@ data:
   preprocessed_dirs:
     - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@f243f5473b68c7b62422e22645277835f9b04d0d/preprocessed
   dataset_weights: null
-  split_dir: data/splits/replogle_wdataset/unseen_ctx/${vars.fold}
+  split_dir: hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50/replogle_wdataset/unseen_ctx/${vars.fold}
   source_dirs:
     esm2: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/esm2
     ncbi_text: hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37/ncbi_text

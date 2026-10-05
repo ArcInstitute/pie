@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 from omegaconf.errors import MissingMandatoryValue
 from pydantic import BaseModel, ValidationError
 
+import pie.config as config_mod
 from pie.config import (
     LoggerConfig,
     OptimizerConfig,
@@ -425,7 +426,7 @@ def test_experiment_wdataset_matches_the_reference_recipe(
         vars_={"fold": fold},
         datasets=("replogle",),
         weights=None,
-        split_dir=f"data/splits/replogle_wdataset/unseen_ctx/{fold}",
+        split_dir=f"{config_mod.PIE_SPLITS_URI}/replogle_wdataset/unseen_ctx/{fold}",
         sources=_WDATASET_SOURCES,
         bin_width=1.1,
         evidence=(42, 256),
@@ -448,7 +449,7 @@ def test_experiment_xdataset_matches_the_reference_recipe(
         vars_={},
         datasets=_XDATASET_DATASETS,
         weights=_XDATASET_WEIGHTS,
-        split_dir="data/splits/replogle_xdataset",
+        split_dir=f"{config_mod.PIE_SPLITS_URI}/replogle_xdataset",
         sources=_XDATASET_SOURCES,
         bin_width=1.01,
         evidence=(0, 2048),
@@ -459,30 +460,6 @@ def test_experiment_xdataset_matches_the_reference_recipe(
     assert list(cfg.data.source_dirs) == list(_XDATASET_SOURCES)
     assert cfg.data.dataset_weights is not None
     assert list(cfg.data.dataset_weights) == list(_XDATASET_DATASETS)
-
-
-def test_experiment_wdataset_split_dirs_hold_every_eval_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _experiment_roots(tmp_path, monkeypatch)
-    for fold in _EXPERIMENT_FOLDS:
-        cfg = compose_train_config(["experiment=replogle_wdataset", f"vars.fold={fold}"])
-        split_dir = REPO_ROOT / cfg.data.split_dir
-        assert (split_dir / "train.json").is_file()
-        assert (split_dir / "val.json").is_file()
-        for setting in _EXPERIMENT_SETTINGS:
-            test_json = REPO_ROOT / "data/splits/replogle_wdataset" / setting / fold / "test.json"
-            assert test_json.is_file()
-
-
-def test_experiment_xdataset_split_dir_holds_every_eval_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _experiment_roots(tmp_path, monkeypatch)
-    cfg = compose_train_config(["experiment=replogle_xdataset"])
-    split_dir = REPO_ROOT / cfg.data.split_dir
-    for name in ("train.json", "val.json", "test_seen.json", "test_unseen.json"):
-        assert (split_dir / name).is_file()
 
 
 def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -520,3 +497,36 @@ def test_pinned_train_config_pins_the_split_dir(
     cfg = compose_train_config([*_required(tiny_data), f"data.split_dir={uri}"])
     pinned = config_mod.pinned_train_config(cfg)
     assert pinned.data.split_dir == f"hf://datasets/arcinstitute/PIE_splits@{'b' * 40}/exp/fold"
+
+
+def _saved(tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    return compose_train_config(_required(tiny_data)).model_dump(mode="json")
+
+
+def test_legacy_split_dir_maps_to_pie_splits(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    raw["data"]["split_dir"] = "data/splits/replogle_wdataset/unseen_ctx/k562"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.split_dir == f"{config_mod.PIE_SPLITS_URI}/replogle_wdataset/unseen_ctx/k562"
+
+
+def test_saved_config_without_legacy_paths_is_unchanged(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    assert config_mod.load_saved_train_config(raw).model_dump(mode="json") == raw
+
+
+def test_experiment_split_dirs_are_pinned_pie_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    uri = config_mod.PIE_SPLITS_URI
+    for fold in _EXPERIMENT_FOLDS:
+        cfg = compose_train_config(["experiment=replogle_wdataset", f"vars.fold={fold}"])
+        assert cfg.data.split_dir == f"{uri}/replogle_wdataset/unseen_ctx/{fold}"
+    cfg = compose_train_config(["experiment=replogle_xdataset"])
+    assert cfg.data.split_dir == f"{uri}/replogle_xdataset"

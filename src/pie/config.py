@@ -7,8 +7,8 @@ errors.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
-from typing import Literal
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Literal
 
 from pydantic import field_validator
 
@@ -104,6 +104,23 @@ def _resolved(path: str) -> str:
     if path.startswith("hf://"):
         return path
     return str(resolve_path(path))
+
+
+PIE_SPLITS_URI = "hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50"
+_LEGACY_SPLITS = "data/splits/"
+
+
+def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
+    """A saved run config (config.yaml or a checkpoint) with repo-era paths moved to HF.
+
+    Runs saved before splits moved to PIE_splits store `data/splits/<rest>`; the same files live
+    at PIE_SPLITS_URI/<rest>, and the train.json sha256 in the data stats still guards them.
+    """
+    data = dict(raw["data"])
+    split_dir = str(data["split_dir"])
+    if split_dir.startswith(_LEGACY_SPLITS):
+        data["split_dir"] = f"{PIE_SPLITS_URI}/{split_dir.removeprefix(_LEGACY_SPLITS)}"
+    return TrainConfig.model_validate({**raw, "data": data})
 
 
 def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None) -> TrainConfig:

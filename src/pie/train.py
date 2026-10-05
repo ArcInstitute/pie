@@ -29,6 +29,7 @@ from pie.config import (
     SchedulerConfig,
     TrainConfig,
     TrainerConfig,
+    load_saved_train_config,
     pinned_train_config,
     portable_train_config,
 )
@@ -480,9 +481,8 @@ def run_train(cfg: TrainConfig) -> Path:
         prepare_run_dir(run_dir, resume=cfg.resume, overwrite=cfg.overwrite)
     previous = None
     if cfg.resume and (run_dir / CONFIG_FILE).is_file():
-        previous = TrainConfig.model_validate(
-            OmegaConf.to_container(OmegaConf.load(run_dir / CONFIG_FILE), resolve=False)
-        )
+        saved = OmegaConf.to_container(OmegaConf.load(run_dir / CONFIG_FILE), resolve=False)
+        previous = load_saved_train_config(cast(dict[str, Any], saved))
     cfg = pinned_train_config(cfg, previous=previous)
     configure_determinism(cfg.seed)
     pinned = _read_data_stats(run_dir) if cfg.resume else None
