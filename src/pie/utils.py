@@ -19,8 +19,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_DIR = REPO_ROOT / "configs"
+PACKAGE_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = PACKAGE_DIR / "configs"
+_LEGACY_ROOT = PACKAGE_DIR.parents[1]
 ENV_ROOTS: tuple[str, ...] = ("PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR")
 CUBLAS_WORKSPACE = ":4096:8"
 
@@ -76,7 +77,7 @@ def load_common_env(path: Path | None = None) -> dict[str, str]:
     is applied.
     Returns only the variables it set. A missing file returns {}.
     """
-    source = REPO_ROOT / "common.sh" if path is None else Path(path)
+    source = _LEGACY_ROOT / "common.sh" if path is None else Path(path)
     if not source.is_file():
         return {}
     parsed: dict[str, str] = {}
@@ -269,7 +270,7 @@ def _env_root_prefixes() -> list[tuple[Path, str]]:
 
 
 def to_portable(path: Path | str) -> str:
-    """Rewrite a path under an env root to '${NAME}/rel', under REPO_ROOT to a relative path.
+    """Rewrite a path under an env root to '${NAME}/rel', under _LEGACY_ROOT to a relative path.
 
     Symlinks are not resolved. Relative paths and strings already in '${NAME}' form are returned
     normalized or unchanged; any other absolute path is returned as-is.
@@ -287,13 +288,13 @@ def to_portable(path: Path | str) -> str:
             return prefix
         if candidate.is_relative_to(root):
             return f"{prefix}/{candidate.relative_to(root).as_posix()}"
-    if candidate.is_relative_to(REPO_ROOT):
-        return candidate.relative_to(REPO_ROOT).as_posix()
+    if candidate.is_relative_to(_LEGACY_ROOT):
+        return candidate.relative_to(_LEGACY_ROOT).as_posix()
     return str(candidate)
 
 
 def resolve_path(value: Path | str) -> Path:
-    """Inverse of to_portable: expand '${NAME}' (require_env); relative paths join REPO_ROOT."""
+    """Inverse of to_portable: expand '${NAME}' (require_env); relative paths join _LEGACY_ROOT."""
     text = str(value)
     match = _ENV_REF.match(text)
     if match is not None:
@@ -301,4 +302,4 @@ def resolve_path(value: Path | str) -> Path:
         root = Path(require_env(name)[name])
         return root / rest if rest else root
     path = Path(text)
-    return path if path.is_absolute() else REPO_ROOT / path
+    return path if path.is_absolute() else _LEGACY_ROOT / path

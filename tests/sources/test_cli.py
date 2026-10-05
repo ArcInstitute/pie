@@ -9,12 +9,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from tests.conftest import REPO_ROOT
 
 import pie.cli
 from pie.cli import sources_main
 from pie.data.preprocessed import PreprocessedDir
 from pie.sources import registry
-from pie.utils import REPO_ROOT, MissingEnvError
+from pie.utils import MissingEnvError
 
 
 @pytest.fixture

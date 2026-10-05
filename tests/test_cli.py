@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from pie import cli
-from pie.utils import REPO_ROOT, MissingEnvError
+from pie.utils import MissingEnvError
+from tests.conftest import REPO_ROOT
 from tests.pipeline import TrainedRun
 
 

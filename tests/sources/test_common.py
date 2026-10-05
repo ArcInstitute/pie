@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from tests.conftest import REPO_ROOT
 from tests.sources.inputs import FakeSession
 
 import pie
@@ -17,7 +18,7 @@ from pie.sources.common import (
     input_record,
     provenance_path,
 )
-from pie.utils import REPO_ROOT, sha256_bytes
+from pie.utils import sha256_bytes
 
 URL = "https://x.test/a.txt"
 

@@ -24,7 +24,8 @@ from pie.config import (
 from pie.data.datamodule import DataConfig
 from pie.data.evidence import EvidenceConfig
 from pie.model.pie import EvidenceModelConfig, ModelConfig, TemperatureConfig
-from pie.utils import CONFIG_DIR, REPO_ROOT
+from pie.utils import CONFIG_DIR
+from tests.conftest import REPO_ROOT
 from tests.fixtures import TinyData, required_train_overrides, set_run_env
 
 
@@ -39,9 +40,19 @@ def _required(tiny: TinyData) -> list[str]:
     )
 
 
-def test_train_yaml_lives_in_the_config_dir() -> None:
-    assert CONFIG_DIR == REPO_ROOT / "configs"
+def test_config_dir_is_inside_the_package() -> None:
+    import pie
+
+    assert Path(pie.__file__).resolve().parent / "configs" == CONFIG_DIR
     assert (CONFIG_DIR / "train.yaml").is_file()
+    assert (CONFIG_DIR / "experiment" / "replogle_wdataset.yaml").is_file()
+
+
+def test_compose_from_another_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    cfg = compose_train_config(["experiment=replogle_wdataset", "vars.fold=k562"])
+    assert cfg.experiment_name == "replogle_wdataset/k562"
 
 
 def test_train_yaml_has_no_hydra_node() -> None:

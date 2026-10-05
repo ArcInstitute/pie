@@ -14,8 +14,8 @@ usage: pie prep dataset=<name> [label_format=table|pie_process] labels=<glob> h5
                 [<key>=<value> ...]
 
 Build one preprocessed dataset dir from DE label tables and expression h5ads. Settings come
-from configs/prep.yaml, configs/prep/dataset/<name>.yaml (obs.* columns, label rewrites) and
-configs/prep/label_format/<name>.yaml (label.* columns; table = PIE label tables, pie_process =
+from pie/configs/prep.yaml, pie/configs/prep/dataset/<name>.yaml (obs.* columns, label rewrites) and
+pie/configs/prep/label_format/<name>.yaml (label.* columns; table = PIE label tables, pie_process =
 pie process DE parquets). Relative paths are relative to the repository root.
 Datasets: arc_vcc_25, jiang, orion, replogle, tahoe.
 """
@@ -36,9 +36,10 @@ def prep_main(argv: list[str] | None = None) -> int:
 _TRAIN_USAGE = """\
 usage: pie train experiment=<name> [<key>=<value> ...]
 
-Train PIE from configs/train.yaml plus an experiment overlay (configs/experiment/<name>.yaml)
-and key=value overrides, e.g. vars.fold=k562, logger.enabled=false, resume=true or
-overwrite=true. Relative paths are relative to the repository root.
+Train PIE from pie/configs/train.yaml plus an experiment overlay
+(pie/configs/experiment/<name>.yaml) and key=value overrides, e.g. vars.fold=k562,
+logger.enabled=false, resume=true or overwrite=true. Relative paths are relative to the
+repository root.
 """
 
 
@@ -59,7 +60,7 @@ usage: pie eval experiment_name=<name> split_path=<split.json> row_set=<name> [<
 
 Score a checkpoint (ckpt=best_auprc|last) on a split file; writes
 <run_dir>/eval/<row_set>/metrics_<ckpt>.csv and granular_<ckpt>.csv. Settings come from
-configs/eval.yaml; save_predictions=true also writes the predictions, overwrite=true replaces
+pie/configs/eval.yaml; save_predictions=true also writes the predictions, overwrite=true replaces
 existing tables. Relative paths are relative to the repository root.
 """
 
@@ -67,7 +68,7 @@ _INFER_USAGE = """\
 usage: pie infer experiment_name=<name> rows_kind=query|split rows_path=<file> [<key>=<value> ...]
 
 Predict p_de, lfc_pred and delta_p_pred per (context, perturbation) with a checkpoint and write
-one parquet (output_path). Settings come from configs/infer.yaml; preprocessed_dirs=[...] points
+one parquet (output_path). Settings come from pie/configs/infer.yaml; preprocessed_dirs=[...] points
 at other preprocessed dirs (for example a controls-only dir), overwrite=true replaces the file.
 """
 
@@ -100,7 +101,7 @@ _SOURCES_USAGE = """\
 usage: pie sources tools=[<name>,...] preprocessed_dirs=[<dir>,...] output_root=<dir>
                    [<key>=<value> ...]
 
-Build knowledge sources into <output_root>/<name>/. Settings come from configs/sources.yaml:
+Build knowledge sources into <output_root>/<name>/. Settings come from pie/configs/sources.yaml:
 with_deps=false builds only the named tools, prior_root=<dir> extends earlier text sources,
 options.<key>=<value> sets builder settings (depmap_csv, drug_metadata, gene_info, device, ...),
 overwrite=true replaces existing outputs. mode=verify checks <output_root>/<name> for every tool
@@ -149,8 +150,8 @@ _PROCESS_USAGE = """\
 usage: pie process [dataset=<name>] input=<glob|[path,...]> [<key>=<value> ...]
 
 Turn raw count h5ads into knockdown-filtered counts (filter), log1p expression h5ads
-(normalize) and per-context DE parquets (de). Settings come from configs/process.yaml,
-the overlay configs/process/dataset/<name>.yaml and key=value overrides such as
+(normalize) and per-context DE parquets (de). Settings come from pie/configs/process.yaml,
+the overlay pie/configs/process/dataset/<name>.yaml and key=value overrides such as
 filter.enabled=false, normalize.output_dir=<dir>, de.output_dir=<dir>, de.device=cuda
 or overwrite=true. Every enabled stage needs its output_dir. Relative paths are relative
 to the repository root.

@@ -10,7 +10,8 @@ import torch
 from omegaconf.errors import MissingMandatoryValue
 
 from pie import utils
-from pie.utils import CONFIG_DIR, REPO_ROOT, atomic_dir, compose_config
+from pie.utils import CONFIG_DIR, atomic_dir, compose_config
+from tests.conftest import REPO_ROOT
 
 SHARED_KEYS = ("WANDB_ENTITY", "WANDB_PROJECT", "PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR")
 
@@ -24,7 +25,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", "-C", str(utils.REPO_ROOT), *args], capture_output=True, text=True, check=False
+        ["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True, check=False
     )
 
 
@@ -132,7 +133,7 @@ def test_strict_model_rejects_unknown_keys():
 
 def test_common_sh_example_lists_exactly_the_shared_keys(monkeypatch):
     _clear(monkeypatch, *SHARED_KEYS, "NCBI_API_KEY", "NCBI_EMAIL")
-    example = utils.REPO_ROOT / "common.sh.example"
+    example = REPO_ROOT / "common.sh.example"
     assert utils.load_common_env(example) == dict.fromkeys(SHARED_KEYS, "")
     text = example.read_text()
     assert "# NCBI_API_KEY=" in text
@@ -143,13 +144,13 @@ def test_common_sh_example_lists_exactly_the_shared_keys(monkeypatch):
 
 def test_unfilled_common_sh_fails_fast_on_every_root(monkeypatch):
     _clear(monkeypatch, *SHARED_KEYS, "NCBI_API_KEY")
-    utils.load_common_env(utils.REPO_ROOT / "common.sh.example")
+    utils.load_common_env(REPO_ROOT / "common.sh.example")
     with pytest.raises(utils.MissingEnvError) as info:
         utils.require_env(*utils.ENV_ROOTS)
     assert info.value.names == list(utils.ENV_ROOTS)
 
 
-@pytest.mark.skipif(not (utils.REPO_ROOT / ".git").exists(), reason="not a git checkout")
+@pytest.mark.skipif(not (REPO_ROOT / ".git").exists(), reason="not a git checkout")
 def test_common_sh_is_gitignored():
     assert _git("check-ignore", "-q", "common.sh").returncode == 0
     assert _git("check-ignore", "-q", "common.sh.example").returncode == 1
@@ -283,7 +284,7 @@ def test_to_portable_and_resolve_path_round_trip(monkeypatch, tmp_path):
         data / "preprocessed" / "replogle": "${PIE_DATA_ROOT}/preprocessed/replogle",
         runs / "exp" / "last.ckpt": "${PIE_RUNS_ROOT}/exp/last.ckpt",
         cache: "${PIE_CACHE_DIR}",
-        utils.REPO_ROOT / "data" / "splits" / "train.json": "data/splits/train.json",
+        REPO_ROOT / "data" / "splits" / "train.json": "data/splits/train.json",
     }
     for path, portable in cases.items():
         assert utils.to_portable(path) == portable
@@ -328,8 +329,8 @@ def _configs(root: Path) -> Path:
     return cfg
 
 
-def test_config_dir_is_the_repo_configs_dir() -> None:
-    assert CONFIG_DIR == REPO_ROOT / "configs"
+def test_config_dir_is_the_packaged_configs_dir() -> None:
+    assert Path(utils.__file__).resolve().parent / "configs" == CONFIG_DIR
 
 
 def test_compose_config_resolves_and_rewrites_group_keys(

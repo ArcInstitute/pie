@@ -9,7 +9,8 @@ from omegaconf.errors import MissingMandatoryValue
 from pydantic import ValidationError
 
 from pie.process.config import DATASETS, ProcessConfig, compose_process_config
-from pie.utils import CONFIG_DIR, REPO_ROOT
+from pie.utils import CONFIG_DIR
+from tests.conftest import REPO_ROOT
 
 GPUDGE_PIN = (
     "gpudge[fast] @ git+https://github.com/ArcInstitute/gpudge.git"
@@ -49,7 +50,6 @@ EXPECTED: dict[str, tuple[dict[str, object], str, str, str | None]] = {
 
 
 def test_config_files_exist() -> None:
-    assert CONFIG_DIR == REPO_ROOT / "configs"
     assert (CONFIG_DIR / "process.yaml").is_file()
     overlays = sorted(p.stem for p in (CONFIG_DIR / "process" / "dataset").glob("*.yaml"))
     assert overlays == sorted(DATASETS)

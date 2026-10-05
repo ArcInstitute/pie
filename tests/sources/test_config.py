@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from hydra.errors import ConfigCompositionException
 from pydantic import ValidationError
+from tests.conftest import REPO_ROOT
 
 from pie.sources.config import compose_sources_config
-from pie.utils import REPO_ROOT
 
 REQUIRED = ["tools=[context_text]", "preprocessed_dirs=[/p/a]", "output_root=/s"]
 

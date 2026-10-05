@@ -11,7 +11,8 @@ from pydantic import ValidationError
 import pie.cli
 from pie.cli import _launch, process_main
 from pie.process.config import DATASETS
-from pie.utils import ENV_ROOTS, REPO_ROOT, MissingEnvError
+from pie.utils import ENV_ROOTS, MissingEnvError
+from tests.conftest import REPO_ROOT
 from tests.process.helpers import make_counts, write_counts
 
 

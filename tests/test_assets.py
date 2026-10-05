@@ -18,7 +18,8 @@ import pytest
 from pie import assets
 from pie.data.preprocessed import PreprocessedDir
 from pie.sources.contract import read_source
-from pie.utils import REPO_ROOT, MissingEnvError, to_portable
+from pie.utils import MissingEnvError, to_portable
+from tests.conftest import REPO_ROOT
 from tests.fixtures import TinyData
 
 SHA = "a" * 40

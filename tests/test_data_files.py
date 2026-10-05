@@ -10,7 +10,8 @@ import pytest
 from pie.data.dataset import load_aliases
 from pie.data.splits import Split, check_disjoint, load_split, parse_split_key
 from pie.sources.text.contexts import load_context_file
-from pie.utils import REPO_ROOT, sha256_file
+from pie.utils import sha256_file
+from tests.conftest import REPO_ROOT
 
 SPLITS = REPO_ROOT / "data" / "splits"
 WDATASET = SPLITS / "replogle_wdataset"
