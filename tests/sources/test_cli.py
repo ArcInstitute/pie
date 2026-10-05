@@ -9,12 +9,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from tests.conftest import REPO_ROOT
 
 import pie.cli
 from pie.cli import sources_main
 from pie.data.preprocessed import PreprocessedDir
 from pie.sources import registry
-from pie.utils import REPO_ROOT, MissingEnvError
+from pie.utils import MissingEnvError
 
 
 @pytest.fixture
@@ -62,7 +63,6 @@ def test_build_orders_dependencies_and_maps_keys(
     assert ctx.out_root == out and ctx.prior_root is None and ctx.overwrite is False
     assert ctx.cache_dir == tmp_path / "cache" / "http"
     assert ctx.options.on_conflict == "keep-prior" and ctx.options.offline
-    assert ctx.options.contexts_dir == REPO_ROOT / "data" / "sources" / "contexts"
     assert json.loads(capsys.readouterr().out) == {n: str(out / n) for n in ("fake_a", "fake_b")}
 
 
@@ -109,6 +109,6 @@ def test_env_and_key_are_checked_before_any_tool_runs(
 
 def test_help_and_script_entry(capsys: pytest.CaptureFixture[str]) -> None:
     assert sources_main(["--help"]) == 0
-    assert capsys.readouterr().out.startswith("usage: pie-sources")
+    assert capsys.readouterr().out.startswith("usage: pie sources")
     scripts = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["scripts"]
-    assert scripts["pie-sources"] == "pie.cli:sources_main"
+    assert scripts["pie-sources"] == "pie.cli:sources_alias"

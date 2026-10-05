@@ -249,7 +249,7 @@ def test_run_ncbi_text_uses_the_pinned_gene_info(
         prior_root=None,
         out_root=tmp_path / "out",
         cache_dir=tmp_path / "cache",
-        options=make_options(tmp_path, device="cpu", gene_info=pinned),
+        options=make_options(device="cpu", gene_info=pinned),
     )
     with pytest.raises(_Stop):
         ncbi.run_ncbi_text(ctx)

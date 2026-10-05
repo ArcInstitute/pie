@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from pie.sources import contract
 from pie.sources.contract import (
     DESCRIPTIONS,
     EMBEDDINGS,
@@ -78,7 +79,7 @@ def test_dense_roundtrip_preserves_bytes(tmp_path: Path, dtype: str) -> None:
     meta = make_meta(["B", "A", "C"], dtype=dtype)
     out = write_source(tmp_path / "esm2", meta, emb)
     assert out == tmp_path / "esm2"
-    assert sorted(p.name for p in out.iterdir()) == [EMBEDDINGS, META]
+    assert sorted(p.name for p in out.iterdir()) == [contract.ALIASES_FILE, EMBEDDINGS, META]
     src = read_source(out)
     assert isinstance(src.embeddings, np.memmap)
     assert src.meta == meta
@@ -424,3 +425,34 @@ def test_extend_embeddings_rejects_token_prior(tmp_path: Path) -> None:
     prior = read_source(write_source(tmp_path / "tok", meta, rand(3, 3, "float16"), offsets))
     with pytest.raises(ValueError, match="dense"):
         extend_embeddings(prior, ["g3"], lambda keys: np.zeros((1, 3), dtype=np.float16))
+
+
+def test_read_source_aliases(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text("TAZ: TAFAZZIN\nADAL: MAPDA\n")
+    assert contract.read_source_aliases(tmp_path) == {"TAZ": "TAFAZZIN", "ADAL": "MAPDA"}
+
+
+def test_read_source_aliases_missing_file(tmp_path: Path) -> None:
+    assert contract.read_source_aliases(tmp_path) == {}
+
+
+def test_read_source_aliases_rejects_non_strings(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text("TAZ: [1, 2]\n")
+    with pytest.raises(ValueError, match="str -> str"):
+        contract.read_source_aliases(tmp_path)
+
+
+def test_curated_aliases_table() -> None:
+    table = {name: contract.curated_aliases(name) for name in contract.SOURCE_NAMES}
+    sizes = {name: len(entries) for name, entries in table.items() if entries}
+    assert sizes == {"esm2": 12, "ncbi_text": 13, "depmap_gene_effect": 7}
+    assert table["ncbi_text"]["C16orf74"] == "CLMB"
+    assert table["esm2"]["TAZ"] == "TAFAZZIN"
+
+
+def test_write_source_ships_the_curated_aliases(tmp_path: Path) -> None:
+    out = write_source(tmp_path / "esm2", make_meta(["TAFAZZIN"]), rand(1, 4))
+    assert contract.read_source_aliases(out) == contract.curated_aliases("esm2")
+    other = make_meta(["k562"], index="context", name="context_text")
+    out = write_source(tmp_path / "context_text", other, rand(1, 4))
+    assert not (out / contract.ALIASES_FILE).exists()

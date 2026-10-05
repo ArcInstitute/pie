@@ -292,3 +292,39 @@ def test_rows_from_split_and_query(tiny_data: TinyData, tmp_path: Path) -> None:
     sample = dm.make_dataset(queried, "none")[1]
     assert "fold_changes" not in sample
     assert set(sample["source_tokens"]) == {"context_text"}
+
+
+def test_aliases_come_from_source_dirs(tmp_path: Path) -> None:
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    (esm2 / "aliases.yaml").write_text("TAZ: TAFAZZIN\n")
+    ncbi = tmp_path / "ncbi_text"
+    ncbi.mkdir()
+    assert datamodule.source_aliases({"esm2": esm2, "ncbi_text": ncbi}, None) == {
+        "esm2": {"TAZ": "TAFAZZIN"},
+        "ncbi_text": {},
+    }
+
+
+def test_extra_aliases_file_overrides(tmp_path: Path) -> None:
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    (esm2 / "aliases.yaml").write_text("TAZ: TAFAZZIN\n")
+    extra = tmp_path / "extra.yaml"
+    extra.write_text("esm2:\n  TAZ: OTHER\n  ADAL: MAPDA\n")
+    assert datamodule.source_aliases({"esm2": esm2}, str(extra)) == {
+        "esm2": {"TAZ": "OTHER", "ADAL": "MAPDA"}
+    }
+
+
+def test_an_aliases_file_at_the_old_repo_path_is_used_as_given(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    custom = tmp_path / "data" / "sources" / "aliases.yaml"
+    custom.parent.mkdir(parents=True)
+    custom.write_text("esm2:\n  TAZ: CUSTOM\n")
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    got = datamodule.source_aliases({"esm2": esm2}, "data/sources/aliases.yaml")
+    assert got == {"esm2": {"TAZ": "CUSTOM"}}

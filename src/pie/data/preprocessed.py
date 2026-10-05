@@ -1,4 +1,4 @@
-"""On-disk format of a preprocessed dataset dir: written by pie-prep, read by the runtime."""
+"""On-disk format of a preprocessed dataset dir: written by pie prep, read by the runtime."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ DELTA_P = "delta_p.npy"  # (N, G) float32, pseudobulk(pert) - ctrl_mean
 CTRL_MEANS = "ctrl_means.npy"  # (C, G) float32, all-NaN row for a context without controls
 CTX_IDS = "ctx_ids.npy"  # (N,) int32 into context_to_id
 PERT_IDS = "pert_ids.npy"  # (N,) int32 into pert_to_id
+CONTEXTS_FILE = "contexts.yaml"  # optional context -> Cellosaurus map (pie sources context_text)
 LABEL_ARRAYS: tuple[str, ...] = (FOLD_CHANGES, FDR, TESTED, LFC_TRUE, DELTA_P, CTX_IDS, PERT_IDS)
 ALL_ARRAYS: tuple[str, ...] = (*LABEL_ARRAYS, CTRL_MEANS)
 CONTROLS_ONLY_ARRAYS: tuple[str, ...] = (CTRL_MEANS,)
@@ -108,8 +109,11 @@ def write_preprocessed(
     arrays: Mapping[str, np.ndarray],
     *,
     overwrite: bool = False,
+    extra_files: Mapping[str, bytes] | None = None,
 ) -> Path:
     """Validate names/dtypes/shapes, np.save each array, fill meta.array_sha256, write meta.json.
+
+    `extra_files` ({file name: bytes}, e.g. CONTEXTS_FILE) are written next to meta.json.
 
     The dir is published atomically via atomic_dir(out). An empty existing `out` is replaced;
     a non-empty one raises FileExistsError unless `overwrite`, which replaces it once the new dir
@@ -142,6 +146,10 @@ def write_preprocessed(
             digests[name] = sha256_file(tmp / name)
         final = meta.model_copy(update={"array_sha256": digests})
         write_json(tmp / META, final.model_dump(mode="json"))
+        for name, payload in (extra_files or {}).items():
+            if "/" in name or name in names or name == META:
+                raise ValueError(f"extra file {name!r} collides with the preprocessed format")
+            (tmp / name).write_bytes(payload)
     return out
 
 

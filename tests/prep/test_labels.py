@@ -542,7 +542,7 @@ def test_prep_main_matches_run_prep(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 @pytest.mark.usefixtures("cli_env")
 def test_prep_main_help_and_bad_values(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert prep_main(["--help"]) == 0
-    assert capsys.readouterr().out.startswith("usage: pie-prep")
+    assert capsys.readouterr().out.startswith("usage: pie prep")
     with pytest.raises(ValidationError):
         prep_main(
             ["dataset=jiang", "labels=/l", "h5ad=/h", "output_dir=/o", "label.fc_space=log10"]
@@ -611,3 +611,24 @@ def test_pert_ensembl_ids_rules(tmp_path: Path) -> None:
     missing = _write_obs_h5ad(tmp_path / "missing.h5ad", gene=["GA"], gene_id=None)
     with pytest.raises(ValueError, match="gene_id"):
         pert_ensembl_ids([str(missing)], cfg, {"GA"})
+
+
+def test_prep_copies_the_context_map(tmp_path: Path) -> None:
+    ctx = tmp_path / "ctx.yaml"
+    ctx.write_text(
+        "contexts:\n  ctxa:\n    cellosaurus: CVCL_0004\n  ctxb:\n    cellosaurus: CVCL_0027\n"
+    )
+    out = run_prep(make_cfg(tmp_path, f"contexts={ctx}"))
+    assert (out / "contexts.yaml").read_bytes() == ctx.read_bytes()
+
+
+def test_prep_without_contexts_writes_no_context_map(tmp_path: Path) -> None:
+    out = run_prep(make_cfg(tmp_path))
+    assert not (out / "contexts.yaml").exists()
+
+
+def test_prep_rejects_an_invalid_context_map(tmp_path: Path) -> None:
+    ctx = tmp_path / "ctx.yaml"
+    ctx.write_text("contexts:\n  ctxa:\n    cellosaurus: not-an-accession\n")
+    with pytest.raises(ValueError, match="invalid accession"):
+        run_prep(make_cfg(tmp_path, f"contexts={ctx}"))

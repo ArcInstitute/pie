@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 from omegaconf.errors import MissingMandatoryValue
 from pydantic import BaseModel, ValidationError
 
+import pie.config as config_mod
 from pie.config import (
     LoggerConfig,
     OptimizerConfig,
@@ -24,7 +25,7 @@ from pie.config import (
 from pie.data.datamodule import DataConfig
 from pie.data.evidence import EvidenceConfig
 from pie.model.pie import EvidenceModelConfig, ModelConfig, TemperatureConfig
-from pie.utils import CONFIG_DIR, REPO_ROOT
+from pie.utils import CONFIG_DIR
 from tests.fixtures import TinyData, required_train_overrides, set_run_env
 
 
@@ -39,9 +40,19 @@ def _required(tiny: TinyData) -> list[str]:
     )
 
 
-def test_train_yaml_lives_in_the_config_dir() -> None:
-    assert CONFIG_DIR == REPO_ROOT / "configs"
+def test_config_dir_is_inside_the_package() -> None:
+    import pie
+
+    assert Path(pie.__file__).resolve().parent / "configs" == CONFIG_DIR
     assert (CONFIG_DIR / "train.yaml").is_file()
+    assert (CONFIG_DIR / "experiment" / "replogle_wdataset.yaml").is_file()
+
+
+def test_compose_from_another_directory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    cfg = compose_train_config(["experiment=replogle_wdataset", "vars.fold=k562"])
+    assert cfg.experiment_name == "replogle_wdataset/k562"
 
 
 def test_train_yaml_has_no_hydra_node() -> None:
@@ -75,7 +86,7 @@ def test_required_keys_compose_to_the_shared_recipe(
         "esm2", "ncbi_text", "context_text", "perturbation_text", "smiles",
     ]
     assert cfg.data.gene_text_dir == f"{tiny_data.root}/sources/gene_text"
-    assert cfg.data.aliases_path == "data/sources/aliases.yaml"
+    assert cfg.data.aliases_path is None
     assert cfg.data.delta_p.bin_width_fold_change == 1.5
     assert cfg.data.delta_p.max_delta_percentile == 99.9
     assert cfg.data.delta_p.max_delta is None
@@ -200,11 +211,40 @@ def test_portable_paths_round_trip(
     assert portable.data.split_dir == "${PIE_DATA_ROOT}/splits"
     assert portable.data.source_dirs["esm2"] == "${PIE_DATA_ROOT}/sources/esm2"
     assert portable.data.gene_text_dir == "${PIE_DATA_ROOT}/sources/gene_text"
-    assert portable.data.aliases_path == "data/sources/aliases.yaml"
-    back = resolved_train_config(portable).model_dump()
-    assert back["data"]["aliases_path"] == str(REPO_ROOT / "data/sources/aliases.yaml")
-    back["data"]["aliases_path"] = cfg.data.aliases_path
-    assert back == cfg.model_dump()
+    assert portable.data.aliases_path is None
+    assert resolved_train_config(portable).model_dump() == cfg.model_dump()
+
+
+def test_saved_legacy_aliases_path_uses_the_packaged_table(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)  # no data/ dir here: the packaged copy must be used
+    raw["data"]["aliases_path"] = "data/sources/aliases.yaml"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.aliases_path == str(config_mod.CURATED_ALIASES_FILE)
+    # Saving the run again writes the portable legacy value, never a site-packages path.
+    assert portable_train_config(cfg).data.aliases_path == "data/sources/aliases.yaml"
+
+
+def test_saved_legacy_aliases_path_that_exists_locally_is_kept(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "sources").mkdir(parents=True)
+    (tmp_path / "data" / "sources" / "aliases.yaml").write_text("esm2: {}\n")
+    raw["data"]["aliases_path"] = "data/sources/aliases.yaml"
+    assert config_mod.load_saved_train_config(raw).data.aliases_path == "data/sources/aliases.yaml"
+
+
+def test_extra_aliases_path_is_portable(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    extra = f"{tiny_data.root}/extra.yaml"
+    cfg = compose_train_config([*_required(tiny_data), f"data.aliases_path={extra}"])
+    assert portable_train_config(cfg).data.aliases_path == "${PIE_DATA_ROOT}/extra.yaml"
 
 
 def test_resolve_steps_matches_both_recipes() -> None:
@@ -290,13 +330,13 @@ _XDATASET_SOURCES = (
 )
 _XDATASET_DATASETS = ("replogle", "tahoe", "jiang", "arc_vcc_25", "orion")
 _HF_DATASETS = {
-    "replogle": "PIE_replogle_nadig_essential@f243f5473b68c7b62422e22645277835f9b04d0d",
-    "tahoe": "PIE_tahoe100m@8f003b086289aecfa6f2f07e3ba49738f69fa69b",
-    "jiang": "PIE_jiang@bcf4ceedd2e1232e8a3a362c1a10b1c49c3585ac",
-    "arc_vcc_25": "PIE_arc_vcc_25@fe629a02e7d584c4b6fd0f9ea0865aa584cb854f",
-    "orion": "PIE_x_atlas_orion@516a10f46461f168cc5dde5c3b449e9c45c70b8f",
+    "replogle": "PIE_replogle_nadig_essential@d4b7b6bbe7ea4fb0ad38cbdec9c4fe7dd223437f",
+    "tahoe": "PIE_tahoe100m@e57e281af702851aff1415f28a2765060520756a",
+    "jiang": "PIE_jiang@2d00d5dfea75ca8be6ba1c9c3cc212c9b232b650",
+    "arc_vcc_25": "PIE_arc_vcc_25@8fcf784b63783dfedebdc78dcf25deaa7361082e",
+    "orion": "PIE_x_atlas_orion@2eed5bcc3c546f9f38844a670f7d331ce1dedd75",
 }
-_HF_SOURCES = "hf://datasets/arcinstitute/PIE_sources@7a27f6e647d8d3d640a37b3c7f0c93559a628b37"
+_HF_SOURCES = "hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26"
 _XDATASET_WEIGHTS = {
     "replogle": 0.0, "tahoe": 0.68, "jiang": 0.01, "arc_vcc_25": 0.01, "orion": 0.3,
 }
@@ -363,7 +403,7 @@ def _experiment_golden(
             "split_dir": split_dir,
             "source_dirs": {name: f"{_HF_SOURCES}/{name}" for name in sources},
             "gene_text_dir": f"{_HF_SOURCES}/gene_text",
-            "aliases_path": "data/sources/aliases.yaml",
+            "aliases_path": None,
             "delta_p": {
                 "bin_width_fold_change": bin_width,
                 "max_delta_percentile": 99.9,
@@ -413,7 +453,7 @@ def test_experiment_wdataset_matches_the_reference_recipe(
         vars_={"fold": fold},
         datasets=("replogle",),
         weights=None,
-        split_dir=f"data/splits/replogle_wdataset/unseen_ctx/{fold}",
+        split_dir=f"{config_mod.PIE_SPLITS_URI}/replogle_wdataset/unseen_ctx/{fold}",
         sources=_WDATASET_SOURCES,
         bin_width=1.1,
         evidence=(42, 256),
@@ -436,7 +476,7 @@ def test_experiment_xdataset_matches_the_reference_recipe(
         vars_={},
         datasets=_XDATASET_DATASETS,
         weights=_XDATASET_WEIGHTS,
-        split_dir="data/splits/replogle_xdataset",
+        split_dir=f"{config_mod.PIE_SPLITS_URI}/replogle_xdataset",
         sources=_XDATASET_SOURCES,
         bin_width=1.01,
         evidence=(0, 2048),
@@ -447,30 +487,6 @@ def test_experiment_xdataset_matches_the_reference_recipe(
     assert list(cfg.data.source_dirs) == list(_XDATASET_SOURCES)
     assert cfg.data.dataset_weights is not None
     assert list(cfg.data.dataset_weights) == list(_XDATASET_DATASETS)
-
-
-def test_experiment_wdataset_split_dirs_hold_every_eval_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _experiment_roots(tmp_path, monkeypatch)
-    for fold in _EXPERIMENT_FOLDS:
-        cfg = compose_train_config(["experiment=replogle_wdataset", f"vars.fold={fold}"])
-        split_dir = REPO_ROOT / cfg.data.split_dir
-        assert (split_dir / "train.json").is_file()
-        assert (split_dir / "val.json").is_file()
-        for setting in _EXPERIMENT_SETTINGS:
-            test_json = REPO_ROOT / "data/splits/replogle_wdataset" / setting / fold / "test.json"
-            assert test_json.is_file()
-
-
-def test_experiment_xdataset_split_dir_holds_every_eval_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _experiment_roots(tmp_path, monkeypatch)
-    cfg = compose_train_config(["experiment=replogle_xdataset"])
-    split_dir = REPO_ROOT / cfg.data.split_dir
-    for name in ("train.json", "val.json", "test_seen.json", "test_unseen.json"):
-        assert (split_dir / name).is_file()
 
 
 def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -493,3 +509,111 @@ def test_experiment_overlays_reject_unknown_keys(
     _experiment_roots(tmp_path, monkeypatch)
     with pytest.raises(ValidationError, match="bogus"):
         compose_train_config([f"experiment={experiment}", "+data.bogus=1"])
+
+
+def test_pinned_train_config_pins_the_split_dir(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pie.config as config_mod
+
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.setattr(
+        config_mod, "pin_asset_reference", lambda v: v.replace("@main", "@" + "b" * 40)
+    )
+    uri = "hf://datasets/arcinstitute/PIE_splits@main/exp/fold"
+    cfg = compose_train_config([*_required(tiny_data), f"data.split_dir={uri}"])
+    pinned = config_mod.pinned_train_config(cfg)
+    assert pinned.data.split_dir == f"hf://datasets/arcinstitute/PIE_splits@{'b' * 40}/exp/fold"
+
+
+def _saved(tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    return compose_train_config(_required(tiny_data)).model_dump(mode="json")
+
+
+def test_legacy_split_dir_maps_to_pie_splits(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    raw["data"]["split_dir"] = "data/splits/replogle_wdataset/unseen_ctx/k562"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.split_dir == f"{config_mod.PIE_SPLITS_URI}/replogle_wdataset/unseen_ctx/k562"
+
+
+def test_saved_config_without_legacy_paths_is_unchanged(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    assert config_mod.load_saved_train_config(raw).model_dump(mode="json") == raw
+
+
+def test_experiment_split_dirs_are_pinned_pie_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _experiment_roots(tmp_path, monkeypatch)
+    uri = config_mod.PIE_SPLITS_URI
+    for fold in _EXPERIMENT_FOLDS:
+        cfg = compose_train_config(["experiment=replogle_wdataset", f"vars.fold={fold}"])
+        assert cfg.data.split_dir == f"{uri}/replogle_wdataset/unseen_ctx/{fold}"
+    cfg = compose_train_config(["experiment=replogle_xdataset"])
+    assert cfg.data.split_dir == f"{uri}/replogle_xdataset"
+
+
+def test_legacy_split_path_maps_to_pie_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    rest = "replogle_xdataset/test_seen.json"
+    uri = config_mod.PIE_SPLITS_URI
+    assert config_mod.legacy_split_path(f"data/splits/{rest}") == f"{uri}/{rest}"
+    assert config_mod.legacy_split_path("other/test.json") == "other/test.json"
+
+
+def test_existing_local_legacy_split_path_is_kept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "splits" / "x").mkdir(parents=True)
+    assert config_mod.legacy_split_path("data/splits/x") == "data/splits/x"
+
+
+def test_eval_train_and_infer_configs_map_legacy_split_paths(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.chdir(tmp_path)
+    uri = config_mod.PIE_SPLITS_URI
+    old = "data/splits/replogle_xdataset"
+    cfg = compose_eval_config(
+        ["experiment_name=x", f"split_path={old}/test_seen.json", "row_set=s"]
+    )
+    assert cfg.split_path == f"{uri}/replogle_xdataset/test_seen.json"
+    train = compose_train_config([*_required(tiny_data), f"data.split_dir={old}"])
+    assert train.data.split_dir == f"{uri}/replogle_xdataset"
+    rows = ["experiment_name=x", f"rows_path={old}/a.json", "output_path=o.parquet"]
+    infer = config_mod.compose_infer_config([*rows, "rows_kind=split"])
+    assert infer.rows_path == f"{uri}/replogle_xdataset/a.json"
+    query = config_mod.compose_infer_config([*rows, "rows_kind=query"])
+    assert query.rows_path == f"{old}/a.json"
+
+
+def test_resume_keeps_the_previous_aliases_path(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    legacy = "data/sources/aliases.yaml"
+    previous = compose_train_config([*_required(tiny_data), f"data.aliases_path={legacy}"])
+    resumed = compose_train_config(_required(tiny_data))
+    pinned = config_mod.pinned_train_config(resumed, previous=previous)
+    assert pinned.data.aliases_path == legacy
+
+
+def test_saved_legacy_split_dir_that_exists_locally_is_kept(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "splits" / "arcinfra_xdataset").mkdir(parents=True)
+    raw["data"]["split_dir"] = "data/splits/arcinfra_xdataset"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.split_dir == "data/splits/arcinfra_xdataset"

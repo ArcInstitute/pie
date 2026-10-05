@@ -17,10 +17,17 @@ import numpy as np
 from filelock import FileLock
 from huggingface_hub import HfApi, snapshot_download
 
-from pie.utils import require_env, resolve_path, sha256_bytes, sha256_file, write_json
+from pie.utils import (
+    canonical_json,
+    require_env,
+    resolve_path,
+    sha256_bytes,
+    sha256_file,
+    write_json,
+)
 
 log = logging.getLogger(__name__)
-AssetKind = Literal["preprocessed", "source"]
+AssetKind = Literal["preprocessed", "source", "splits"]
 _SHA = re.compile(r"[0-9a-f]{40}")
 _COMPONENT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 
@@ -137,10 +144,34 @@ def pin_asset_reference(value: str) -> str:
         return _pin(ref, root).uri
 
 
+def _split_files(path: Path) -> list[Path]:
+    files = sorted(p for p in path.iterdir() if p.is_file() and p.suffix == ".json")
+    if not files:
+        raise ValueError(f"{path}: no split .json files")
+    return files
+
+
+def _splits_digest(path: Path) -> str:
+    return sha256_bytes(canonical_json({p.name: sha256_file(p) for p in _split_files(path)}))
+
+
+def _key_digest(path: Path, kind: AssetKind) -> str:
+    """meta.json's sha256 for the PIE formats; a digest of every split file for splits."""
+    return _splits_digest(path) if kind == "splits" else sha256_file(path / "meta.json")
+
+
 def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
     """Validate the native format before recording download completion."""
+    if kind == "splits":
+        from pie.data.splits import load_split
+
+        files = _split_files(path)
+        for f in files:
+            load_split(f)
+        return files
     if kind == "preprocessed":
-        from pie.data.preprocessed import ARRAY_DTYPES, PreprocessedDir
+        from pie.data.preprocessed import ARRAY_DTYPES, CONTEXTS_FILE, PreprocessedDir
+        from pie.sources.text.context_file import load_context_file
 
         meta = PreprocessedDir.open(path).meta
         files = [path / "meta.json"]
@@ -158,8 +189,17 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
             if array.shape != shape:
                 raise ValueError(f"{path / name}: shape {array.shape}, expected {shape}")
             files.append(path / name)
+        contexts = path / CONTEXTS_FILE
+        if contexts.is_file():
+            load_context_file(contexts)
+            files.append(contexts)
         return files
-    from pie.sources.contract import read_descriptions, read_source
+    from pie.sources.contract import (
+        ALIASES_FILE,
+        read_descriptions,
+        read_source,
+        read_source_aliases,
+    )
 
     source = read_source(path)
     files = [path / "meta.json", path / "embeddings.npy"]
@@ -169,6 +209,10 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
     if descriptions.is_file():
         read_descriptions(path)
         files.append(descriptions)
+    aliases = path / ALIASES_FILE
+    if aliases.is_file():
+        read_source_aliases(path)
+        files.append(aliases)
     return files
 
 
@@ -180,7 +224,7 @@ def _complete(manifest: Path, path: Path, ref: HubReference, kind: AssetKind) ->
             and payload["kind"] == kind
             and bool(payload["sizes"])
             and all((path / name).stat().st_size == size for name, size in payload["sizes"].items())
-            and sha256_file(path / "meta.json") == payload["meta_sha256"]
+            and _key_digest(path, kind) == payload["meta_sha256"]
         )
     except (OSError, ValueError, KeyError, TypeError):
         return False
@@ -235,7 +279,23 @@ def resolve_asset(value: str | Path, *, kind: AssetKind) -> Path:
         write_json(manifest, {
             "reference": ref.uri,
             "kind": kind,
-            "meta_sha256": sha256_file(path / "meta.json"),
+            "meta_sha256": _key_digest(path, kind),
             "sizes": {p.name: p.stat().st_size for p in files},
         })
         return path
+
+
+def resolve_split_file(value: str | Path) -> Path:
+    """One split file: a local path, or hf://datasets/<owner>/<repo>@<rev>/<dir>/<name>.json."""
+    text = str(value)
+    if not text.startswith("hf://"):
+        return resolve_path(value)
+    ref = parse_hf_reference(text)
+    parent, _, name = ref.subdir.rpartition("/")
+    if not name.endswith(".json"):
+        raise ValueError(f"{text!r} must name a .json split file inside a split dir")
+    directory = resolve_asset(replace(ref, subdir=parent).uri, kind="splits")
+    path = directory / name
+    if not path.is_file():
+        raise FileNotFoundError(f"{text}: {name} is not in the split dir {directory}")
+    return path

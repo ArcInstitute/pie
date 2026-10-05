@@ -18,7 +18,7 @@ from pie.sources.contract import DescriptionConflictError, read_descriptions, re
 from pie.sources.embed import openai as openai_embed
 from pie.sources.registry import TOOLS, RunContext, SourceTool, resolve_order
 from pie.sources.text import contexts, drugs, genes, tools
-from pie.utils import MissingEnvError
+from pie.utils import MissingEnvError, sha256_file
 
 
 def dataset(name: str, kind: str, perts: list[str], genes_: list[str], ctxs: list[str]) -> Any:
@@ -35,12 +35,20 @@ DRUG_SET = dataset("t", "drug", ["Zeta_5.0uM", "DMSO_TF_0.0uM"], ["GAPDH", "ACTB
 def ctx(
     tmp_path: Path, datasets: list[Any], prior: Path | None = None, **options: Any
 ) -> RunContext:
+    with_paths = []
+    for d in datasets:  # fakes get a dir holding the context map that context_text records
+        if isinstance(d, SimpleNamespace):
+            path = tmp_path / "pre" / d.dataset
+            path.mkdir(parents=True, exist_ok=True)
+            (path / "contexts.yaml").write_text(f"# {d.dataset}\n")
+            d = SimpleNamespace(**{**vars(d), "path": path})
+        with_paths.append(d)
     return RunContext(
-        datasets=datasets,
+        datasets=with_paths,
         prior_root=prior,
         out_root=tmp_path / "out",
         cache_dir=tmp_path / "cache",
-        options=make_options(tmp_path, **options),
+        options=make_options(**options),
     )
 
 
@@ -75,7 +83,7 @@ def fakes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     monkeypatch.setattr(
         contexts,
         "describe_contexts",
-        lambda ds, _dir, client: {
+        lambda ds, client: {
             c: f"ctx {c} {client.cache_dir.name}" for d in ds for c in d.contexts
         },
     )
@@ -342,3 +350,12 @@ def test_extend_in_place_keeps_prior_rows_and_replaces_the_dir(
     assert read_descriptions(out)["k562"] == prior_texts["k562"]
     assert fakes[1:] == [["ctx rpe1 context_text"]]
     assert sorted(p.name for p in root.iterdir()) == ["context_text"]
+
+
+def test_context_text_records_each_context_map_digest(
+    tmp_path: Path, fakes: list[list[str]]
+) -> None:
+    out = TOOLS["context_text"].run(ctx(tmp_path, [GENE_SET]))
+    params = read_source(out).meta.provenance["params"]
+    expected = sha256_file(tmp_path / "pre" / "g" / "contexts.yaml")
+    assert params == {"cellosaurus_release": "56.0", "contexts_sha256": {"g": expected}}

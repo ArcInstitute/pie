@@ -10,7 +10,8 @@ import torch
 from omegaconf.errors import MissingMandatoryValue
 
 from pie import utils
-from pie.utils import CONFIG_DIR, REPO_ROOT, atomic_dir, compose_config
+from pie.utils import CONFIG_DIR, atomic_dir, compose_config
+from tests.conftest import REPO_ROOT
 
 SHARED_KEYS = ("WANDB_ENTITY", "WANDB_PROJECT", "PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR")
 
@@ -24,7 +25,7 @@ def _clear(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
 
 def _git(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["git", "-C", str(utils.REPO_ROOT), *args], capture_output=True, text=True, check=False
+        ["git", "-C", str(REPO_ROOT), *args], capture_output=True, text=True, check=False
     )
 
 
@@ -116,7 +117,18 @@ def test_require_env_lists_every_missing_or_empty_name(monkeypatch):
         utils.require_env("PIE_T_A", "PIE_T_B", "PIE_T_D", "PIE_T_C")
     assert info.value.names == ["PIE_T_A", "PIE_T_B", "PIE_T_C"]
     assert str(info.value) == (
-        "missing environment variables: PIE_T_A, PIE_T_B, PIE_T_C (set them in common.sh)"
+        "missing environment variables: PIE_T_A, PIE_T_B, PIE_T_C (export them, or set them in "
+        "$PIE_ENV_FILE, ./common.sh or ~/.config/pie/common.sh)"
+    )
+
+
+def test_missing_api_key_is_never_sent_to_common_sh(monkeypatch):
+    _clear(monkeypatch, "OPENAI_API_KEY")
+    with pytest.raises(utils.MissingEnvError) as info:
+        utils.require_env("OPENAI_API_KEY")
+    assert str(info.value) == (
+        "missing environment variables: OPENAI_API_KEY "
+        "(export OPENAI_API_KEY in your environment; never put it in common.sh)"
     )
 
 
@@ -132,7 +144,7 @@ def test_strict_model_rejects_unknown_keys():
 
 def test_common_sh_example_lists_exactly_the_shared_keys(monkeypatch):
     _clear(monkeypatch, *SHARED_KEYS, "NCBI_API_KEY", "NCBI_EMAIL")
-    example = utils.REPO_ROOT / "common.sh.example"
+    example = REPO_ROOT / "common.sh.example"
     assert utils.load_common_env(example) == dict.fromkeys(SHARED_KEYS, "")
     text = example.read_text()
     assert "# NCBI_API_KEY=" in text
@@ -143,13 +155,13 @@ def test_common_sh_example_lists_exactly_the_shared_keys(monkeypatch):
 
 def test_unfilled_common_sh_fails_fast_on_every_root(monkeypatch):
     _clear(monkeypatch, *SHARED_KEYS, "NCBI_API_KEY")
-    utils.load_common_env(utils.REPO_ROOT / "common.sh.example")
+    utils.load_common_env(REPO_ROOT / "common.sh.example")
     with pytest.raises(utils.MissingEnvError) as info:
         utils.require_env(*utils.ENV_ROOTS)
     assert info.value.names == list(utils.ENV_ROOTS)
 
 
-@pytest.mark.skipif(not (utils.REPO_ROOT / ".git").exists(), reason="not a git checkout")
+@pytest.mark.skipif(not (REPO_ROOT / ".git").exists(), reason="not a git checkout")
 def test_common_sh_is_gitignored():
     assert _git("check-ignore", "-q", "common.sh").returncode == 0
     assert _git("check-ignore", "-q", "common.sh.example").returncode == 1
@@ -283,7 +295,6 @@ def test_to_portable_and_resolve_path_round_trip(monkeypatch, tmp_path):
         data / "preprocessed" / "replogle": "${PIE_DATA_ROOT}/preprocessed/replogle",
         runs / "exp" / "last.ckpt": "${PIE_RUNS_ROOT}/exp/last.ckpt",
         cache: "${PIE_CACHE_DIR}",
-        utils.REPO_ROOT / "data" / "splits" / "train.json": "data/splits/train.json",
     }
     for path, portable in cases.items():
         assert utils.to_portable(path) == portable
@@ -328,8 +339,8 @@ def _configs(root: Path) -> Path:
     return cfg
 
 
-def test_config_dir_is_the_repo_configs_dir() -> None:
-    assert CONFIG_DIR == REPO_ROOT / "configs"
+def test_config_dir_is_the_packaged_configs_dir() -> None:
+    assert Path(utils.__file__).resolve().parent / "configs" == CONFIG_DIR
 
 
 def test_compose_config_resolves_and_rewrites_group_keys(
@@ -369,3 +380,55 @@ def test_atomic_dir_overwrite_replaces_only_after_success(tmp_path: Path) -> Non
         (tmp / "new.txt").write_text("new")
     assert sorted(p.name for p in final.iterdir()) == ["new.txt"]
     assert sorted(p.name for p in tmp_path.iterdir()) == ["out"]  # no tmp or trash left
+
+
+def test_relative_paths_resolve_against_the_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert utils.resolve_path("runs/x") == tmp_path / "runs" / "x"
+
+
+def test_to_portable_makes_relative_paths_absolute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in utils.ENV_ROOTS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert utils.to_portable("splits/train.json") == str(tmp_path / "splits" / "train.json")
+
+
+def test_common_env_search_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.chdir(work)
+    monkeypatch.delenv("PIE_ENV_FILE", raising=False)
+    assert utils.common_env_candidates() == [
+        work / "common.sh",
+        home / ".config" / "pie" / "common.sh",
+    ]
+    explicit = tmp_path / "env.sh"
+    monkeypatch.setenv("PIE_ENV_FILE", str(explicit))
+    assert utils.common_env_candidates() == [explicit]
+
+
+def test_explicit_env_file_must_exist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PIE_ENV_FILE", str(tmp_path / "missing.sh"))
+    with pytest.raises(FileNotFoundError, match="PIE_ENV_FILE"):
+        utils.load_common_env()
+
+
+def test_first_existing_common_sh_wins(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".config" / "pie").mkdir(parents=True)
+    (home / ".config" / "pie" / "common.sh").write_text("PIE_TEST_VALUE=home\n")
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "common.sh").write_text("PIE_TEST_VALUE=work\n")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.chdir(work)
+    monkeypatch.delenv("PIE_ENV_FILE", raising=False)
+    monkeypatch.delenv("PIE_TEST_VALUE", raising=False)
+    assert utils.load_common_env() == {"PIE_TEST_VALUE": "work"}

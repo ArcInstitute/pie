@@ -7,14 +7,15 @@ errors.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Sequence
-from typing import Literal
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, Literal
 
 from pydantic import field_validator
 
 from pie.assets import parse_hf_reference, pin_asset_reference
 from pie.data.datamodule import DataConfig
 from pie.model.pie import ModelConfig
+from pie.sources.contract import CURATED_ALIASES_FILE
 from pie.utils import StrictModel, compose_config, resolve_path, to_portable
 
 
@@ -83,18 +84,21 @@ class TrainConfig(StrictModel):
 
 def compose_train_config(overrides: Sequence[str]) -> TrainConfig:
     """Compose configs/train.yaml (an experiment overlay comes in via `experiment=<name>`)."""
-    return TrainConfig.model_validate(compose_config("train", overrides))
+    cfg = TrainConfig.model_validate(compose_config("train", overrides))
+    split_dir = legacy_split_path(cfg.data.split_dir)
+    return cfg.model_copy(update={"data": cfg.data.model_copy(update={"split_dir": split_dir})})
 
 
 def _map_paths(cfg: TrainConfig, convert: Callable[[str], str]) -> TrainConfig:
     data = cfg.data
+    aliases = data.aliases_path
     new_data = data.model_copy(
         update={
             "preprocessed_dirs": [convert(p) for p in data.preprocessed_dirs],
             "split_dir": convert(data.split_dir),
             "source_dirs": {name: convert(p) for name, p in data.source_dirs.items()},
             "gene_text_dir": convert(data.gene_text_dir),
-            "aliases_path": convert(data.aliases_path),
+            "aliases_path": None if aliases is None else convert(aliases),
         }
     )
     return cfg.model_copy(update={"run_dir": convert(cfg.run_dir), "data": new_data})
@@ -104,6 +108,38 @@ def _resolved(path: str) -> str:
     if path.startswith("hf://"):
         return path
     return str(resolve_path(path))
+
+
+PIE_SPLITS_URI = "hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50"
+_LEGACY_SPLITS = "data/splits/"
+LEGACY_ALIASES_PATH = "data/sources/aliases.yaml"
+
+
+def legacy_split_path(value: str) -> str:
+    """A repo-era `data/splits/<rest>` path that does not exist here -> PIE_SPLITS_URI/<rest>.
+
+    An existing local path is kept, so a checkout or copy that still holds the files wins.
+    """
+    if value.startswith(_LEGACY_SPLITS) and not resolve_path(value).exists():
+        return f"{PIE_SPLITS_URI}/{value.removeprefix(_LEGACY_SPLITS)}"
+    return value
+
+
+def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
+    """A saved run config (config.yaml or a checkpoint) with repo-era paths moved to HF.
+
+    Runs saved before splits moved to PIE_splits store `data/splits/<rest>`; the same files live
+    at PIE_SPLITS_URI/<rest>, and the train.json sha256 in the data stats still guards them. A
+    split dir that still exists locally is kept (legacy_split_path). Runs saved before aliases
+    moved into the source dirs store LEGACY_ALIASES_PATH; when that file is absent it maps to the
+    packaged copy (CURATED_ALIASES_FILE, byte-identical), so their predictions do not change.
+    """
+    data = dict(raw["data"])
+    data["split_dir"] = legacy_split_path(str(data["split_dir"]))
+    aliases = data.get("aliases_path")
+    if aliases == LEGACY_ALIASES_PATH and not resolve_path(aliases).exists():
+        data["aliases_path"] = str(CURATED_ALIASES_FILE)
+    return TrainConfig.model_validate({**raw, "data": data})
 
 
 def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None) -> TrainConfig:
@@ -131,12 +167,25 @@ def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None
         "preprocessed_dirs": dirs,
         "source_dirs": sources,
         "gene_text_dir": pin(data.gene_text_dir, prior.gene_text_dir if prior else None),
+        "split_dir": pin(data.split_dir, prior.split_dir if prior else None),
+        # A run saved before aliases moved into the source dirs keeps its aliases file on resume.
+        "aliases_path": (
+            prior.aliases_path if prior and data.aliases_path is None else data.aliases_path
+        ),
     })})
 
 
 def portable_train_config(cfg: TrainConfig) -> TrainConfig:
-    """Copy with every path rewritten by pie.utils.to_portable ('${PIE_DATA_ROOT}/...')."""
-    return _map_paths(cfg, to_portable)
+    """Copy with every path rewritten by pie.utils.to_portable ('${PIE_DATA_ROOT}/...').
+
+    The packaged curated table that load_saved_train_config substitutes is saved as
+    LEGACY_ALIASES_PATH again, so a resumed old run stays portable.
+    """
+    portable = _map_paths(cfg, to_portable)
+    if cfg.data.aliases_path == str(CURATED_ALIASES_FILE):
+        data = portable.data.model_copy(update={"aliases_path": LEGACY_ALIASES_PATH})
+        portable = portable.model_copy(update={"data": data})
+    return portable
 
 
 def resolved_train_config(cfg: TrainConfig) -> TrainConfig:
@@ -148,12 +197,12 @@ _ROW_SET = re.compile(r"[A-Za-z0-9_\-][A-Za-z0-9_.\-]*")
 
 
 class EvalConfig(StrictModel):
-    """pie-eval (configs/eval.yaml)."""
+    """pie eval (configs/eval.yaml)."""
 
     experiment_name: str
     run_dir: str
     ckpt: Literal["best_auprc", "last"]
-    split_path: str  # a split file, e.g. data/splits/replogle_xdataset/test_seen.json
+    split_path: str  # a split file: a local path or hf://datasets/.../<dir>/<name>.json
     row_set: str  # output dir name under <run_dir>/eval/
     preprocessed_dirs: list[str] | None  # None = the checkpoint's training dirs
     save_predictions: bool
@@ -170,7 +219,7 @@ class EvalConfig(StrictModel):
 
 
 class InferConfig(StrictModel):
-    """pie-infer (configs/infer.yaml)."""
+    """pie infer (configs/infer.yaml)."""
 
     experiment_name: str
     run_dir: str
@@ -186,9 +235,13 @@ class InferConfig(StrictModel):
 
 def compose_eval_config(overrides: Sequence[str]) -> EvalConfig:
     """Compose configs/eval.yaml (+overrides), resolve, validate."""
-    return EvalConfig.model_validate(compose_config("eval", overrides))
+    cfg = EvalConfig.model_validate(compose_config("eval", overrides))
+    return cfg.model_copy(update={"split_path": legacy_split_path(cfg.split_path)})
 
 
 def compose_infer_config(overrides: Sequence[str]) -> InferConfig:
     """Compose configs/infer.yaml (+overrides), resolve, validate."""
-    return InferConfig.model_validate(compose_config("infer", overrides))
+    cfg = InferConfig.model_validate(compose_config("infer", overrides))
+    if cfg.rows_kind != "split":
+        return cfg
+    return cfg.model_copy(update={"rows_path": legacy_split_path(cfg.rows_path)})

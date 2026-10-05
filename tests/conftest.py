@@ -10,6 +10,8 @@ from pie.train import run_train
 from tests.fixtures import TinyData, build_tiny_data
 from tests.pipeline import TrainedRun, tiny_train_config
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 @pytest.fixture
 def tiny_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TinyData:

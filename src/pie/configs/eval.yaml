@@ -1,0 +1,14 @@
+# pie eval: score a checkpoint on one split file.
+defaults:
+  - _self_
+
+experiment_name: ???
+run_dir: ${oc.env:PIE_RUNS_ROOT}/${experiment_name}
+ckpt: best_auprc
+split_path: ???
+row_set: ???
+preprocessed_dirs: null
+save_predictions: false
+overwrite: false
+device: cuda
+batch_size: 16

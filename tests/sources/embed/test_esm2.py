@@ -89,7 +89,7 @@ def test_run_esm2_fetches_under_its_own_cache_subdir(
         prior_root=None,
         out_root=tmp_path / "out",
         cache_dir=tmp_path / "cache",
-        options=make_options(tmp_path, device="cpu"),
+        options=make_options(device="cpu"),
     )
     esm2.run_esm2(ctx)
 
@@ -126,7 +126,7 @@ def test_run_esm2_uses_the_pinned_gene_info(
         prior_root=None,
         out_root=tmp_path / "out",
         cache_dir=tmp_path / "cache",
-        options=make_options(tmp_path, device="cpu", gene_info=pinned),
+        options=make_options(device="cpu", gene_info=pinned),
     )
     esm2.run_esm2(ctx)
     assert seen["gene_info"] == pinned

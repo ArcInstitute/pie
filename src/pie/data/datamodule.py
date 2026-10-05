@@ -20,6 +20,7 @@ from pie.assets import resolve_asset
 from pie.data import samplers
 from pie.data.dataset import (
     LABEL_KINDS,
+    Aliases,
     Batch,
     Labels,
     PieDataset,
@@ -45,7 +46,7 @@ from pie.data.splits import (
     resolve_split,
     split_pairs,
 )
-from pie.sources.contract import SOURCE_NAMES, read_source
+from pie.sources.contract import SOURCE_NAMES, read_source, read_source_aliases
 from pie.utils import StrictModel, read_json, require_env, resolve_path, sha256_file, write_json
 
 log = logging.getLogger(__name__)
@@ -63,6 +64,17 @@ _LAUNCH_T0 = float(os.environ.setdefault("PIE_LAUNCH_T0", repr(time.time())))
 Pair = tuple[str, str, str]
 
 
+def source_aliases(source_paths: Mapping[str, Path], aliases_path: str | None) -> Aliases:
+    """Each source dir's aliases.yaml, then the optional `aliases_path` file (multi-source
+    format) over them, loaded as given."""
+    aliases: Aliases = {name: read_source_aliases(p) for name, p in source_paths.items()}
+    if aliases_path is None:
+        return aliases
+    for name, table in load_aliases(resolve_path(aliases_path)).items():
+        aliases.setdefault(name, {}).update(table)
+    return aliases
+
+
 class DataConfig(StrictModel):
     """data.* (asset paths are local strings or explicit hf://datasets/... references)."""
 
@@ -71,7 +83,7 @@ class DataConfig(StrictModel):
     split_dir: str
     source_dirs: dict[str, str]
     gene_text_dir: str
-    aliases_path: str
+    aliases_path: str | None  # an extra multi-source aliases file over each source's aliases.yaml
     delta_p: DeltaPConfig
     evidence: EvidenceConfig
     batch_size: int
@@ -211,12 +223,12 @@ class PieDataModule(L.LightningDataModule):
         self.gene_union_ids = [
             np.asarray([union[gene] for gene in d.genes], dtype=np.int64) for d in self.dirs
         ]
-        sources = {
-            name: read_source(resolve_asset(p, kind="source"))
-            for name, p in cfg.source_dirs.items()
+        source_paths = {
+            name: resolve_asset(p, kind="source") for name, p in cfg.source_dirs.items()
         }
+        sources = {name: read_source(path) for name, path in source_paths.items()}
         self.source_dims = {name: src.meta.dim for name, src in sources.items()}
-        self._lookup = SourceLookup(sources, load_aliases(resolve_path(cfg.aliases_path)))
+        self._lookup = SourceLookup(sources, source_aliases(source_paths, cfg.aliases_path))
         self._gene_text = read_source(resolve_asset(cfg.gene_text_dir, kind="source"))
         if self._gene_text.meta.layout != "dense" or self._gene_text.meta.index != "gene":
             raise ValueError("data.gene_text_dir must be a dense, gene-indexed source")
@@ -271,7 +283,7 @@ class PieDataModule(L.LightningDataModule):
         controls_only = [d.dataset for d in self.dirs if d.controls_only]
         if controls_only:
             raise ValueError(f"controls-only dirs cannot be trained on: {controls_only}")
-        split_dir = resolve_path(self.cfg.split_dir)
+        split_dir = resolve_asset(self.cfg.split_dir, kind="splits")
         train_rows = resolve_split(load_split(split_dir / TRAIN_JSON), self.dirs)
         pct = self.cfg.delta_p.max_delta_percentile
         per_dir = {
@@ -306,7 +318,7 @@ class PieDataModule(L.LightningDataModule):
                 for p in ecfg.preprocessed_dirs
             ]
         )
-        train_path = resolve_path(ecfg.split_dir) / TRAIN_JSON
+        train_path = resolve_asset(ecfg.split_dir, kind="splits") / TRAIN_JSON
         train_sha = sha256_file(train_path)
         if self._stats is not None and train_sha != self._stats.train_json_sha256:
             raise ValueError(
@@ -406,7 +418,7 @@ class PieDataModule(L.LightningDataModule):
             return
         if self._stats is None:
             raise RuntimeError("call setup_stats() before setup('fit')")
-        split_dir = resolve_path(self.cfg.split_dir)
+        split_dir = resolve_asset(self.cfg.split_dir, kind="splits")
         train = load_split(split_dir / TRAIN_JSON)
         val = load_split(split_dir / VAL_JSON)
         check_disjoint({"train": train, "val": val})

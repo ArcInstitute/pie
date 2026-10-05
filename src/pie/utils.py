@@ -19,10 +19,11 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-CONFIG_DIR = REPO_ROOT / "configs"
+PACKAGE_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = PACKAGE_DIR / "configs"
 ENV_ROOTS: tuple[str, ...] = ("PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR")
 CUBLAS_WORKSPACE = ":4096:8"
+_SECRET_ENV = frozenset({"OPENAI_API_KEY"})  # MissingEnvError never points these at common.sh
 
 _ASSIGN = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -40,8 +41,18 @@ class MissingEnvError(RuntimeError):
 
     def __init__(self, names: list[str]) -> None:
         self.names = list(names)
+        hints = [
+            f"export {name} in your environment; never put it in common.sh"
+            for name in self.names
+            if name in _SECRET_ENV
+        ]
+        if any(name not in _SECRET_ENV for name in self.names):
+            where = "$PIE_ENV_FILE, ./common.sh or ~/.config/pie/common.sh"
+            hints.append(
+                f"export {'the others' if hints else 'them'}, or set them in {where}"
+            )
         super().__init__(
-            f"missing environment variables: {', '.join(self.names)} (set them in common.sh)"
+            f"missing environment variables: {', '.join(self.names)} ({'; '.join(hints)})"
         )
 
 
@@ -67,18 +78,37 @@ def _unquote(value: str) -> str:
     return value
 
 
+def common_env_candidates() -> list[Path]:
+    """Where load_common_env looks: $PIE_ENV_FILE alone, else ./common.sh, then the user dir."""
+    explicit = os.environ.get("PIE_ENV_FILE")
+    if explicit:
+        return [Path(explicit)]
+    return [Path.cwd() / "common.sh", Path.home() / ".config" / "pie" / "common.sh"]
+
+
 def load_common_env(path: Path | None = None) -> dict[str, str]:
-    """Parse `common.sh` and set the variables that are not already in the environment.
+    """Parse the first existing file of `common_env_candidates()` (or `path`) and set the
+    variables that are not already in the environment.
 
     Accepts `NAME=value` and `export NAME=value`, strips one pair of matching quotes and ignores
     blank lines and `#` comments. Values are literal: `$` expansion, a leading `~` and unquoted
     whitespace or inline comments are rejected. Any other line is a ValueError, and then nothing
     is applied.
-    Returns only the variables it set. A missing file returns {}.
+    Returns only the variables it set. A missing file returns {}; a missing $PIE_ENV_FILE is a
+    FileNotFoundError.
     """
-    source = REPO_ROOT / "common.sh" if path is None else Path(path)
-    if not source.is_file():
-        return {}
+    if path is not None:
+        source = Path(path)
+        if not source.is_file():
+            return {}
+    else:
+        candidates = common_env_candidates()
+        if os.environ.get("PIE_ENV_FILE") and not candidates[0].is_file():
+            raise FileNotFoundError(f"PIE_ENV_FILE={candidates[0]} does not exist")
+        found = next((c for c in candidates if c.is_file()), None)
+        if found is None:
+            return {}
+        source = found
     parsed: dict[str, str] = {}
     for lineno, raw in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
         line = raw.strip()
@@ -269,10 +299,11 @@ def _env_root_prefixes() -> list[tuple[Path, str]]:
 
 
 def to_portable(path: Path | str) -> str:
-    """Rewrite a path under an env root to '${NAME}/rel', under REPO_ROOT to a relative path.
+    """Rewrite a path under an env root to '${NAME}/rel'; any other path becomes absolute.
 
-    Symlinks are not resolved. Relative paths and strings already in '${NAME}' form are returned
-    normalized or unchanged; any other absolute path is returned as-is.
+    Symlinks are not resolved. A relative path is joined to the current directory first, so a
+    saved config never depends on where it is read. Strings already in '${NAME}' form and hf://
+    references are returned unchanged.
     """
     text = str(path)
     if text.startswith("hf://"):
@@ -281,19 +312,17 @@ def to_portable(path: Path | str) -> str:
         return text
     candidate = Path(os.path.normpath(text))
     if not candidate.is_absolute():
-        return candidate.as_posix()
+        candidate = Path(os.path.normpath(Path.cwd() / candidate))
     for root, prefix in _env_root_prefixes():
         if candidate == root:
             return prefix
         if candidate.is_relative_to(root):
             return f"{prefix}/{candidate.relative_to(root).as_posix()}"
-    if candidate.is_relative_to(REPO_ROOT):
-        return candidate.relative_to(REPO_ROOT).as_posix()
     return str(candidate)
 
 
 def resolve_path(value: Path | str) -> Path:
-    """Inverse of to_portable: expand '${NAME}' (require_env); relative paths join REPO_ROOT."""
+    """Inverse of to_portable: expand '${NAME}' (require_env); relative paths join the cwd."""
     text = str(value)
     match = _ENV_REF.match(text)
     if match is not None:
@@ -301,4 +330,4 @@ def resolve_path(value: Path | str) -> Path:
         root = Path(require_env(name)[name])
         return root / rest if rest else root
     path = Path(text)
-    return path if path.is_absolute() else REPO_ROOT / path
+    return path if path.is_absolute() else Path.cwd() / path

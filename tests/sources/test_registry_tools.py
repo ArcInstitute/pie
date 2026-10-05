@@ -56,7 +56,7 @@ def _ctx(tmp_path: Path, datasets: Any = (), **options: Any) -> RunContext:
         prior_root=None,
         out_root=tmp_path / "out",
         cache_dir=tmp_path / "cache",
-        options=make_options(tmp_path, **options),
+        options=make_options(**options),
     )
 
 

@@ -1,0 +1,25 @@
+# pie sources: build knowledge sources into <output_root>/<name>/ for the datasets in
+# preprocessed_dirs. `tools` adds and orders dependencies unless with_deps=false. Builder
+# settings live under `options`. Relative paths are relative to the current directory.
+tools: ???
+with_deps: true
+preprocessed_dirs: ???
+output_root: ???
+prior_root: null
+overwrite: false
+mode: build
+
+verify:
+  reference: null
+  aliases: null  # extra aliases file (multi-source format) over each source's aliases.yaml
+
+options:
+  on_conflict: error
+  cellosaurus_release: "56.0"
+  offline: false
+  gene_info: null
+  drug_metadata: null
+  depmap_csv: null
+  string_release: v12.0
+  device: cuda
+  pert_output: null

@@ -481,7 +481,7 @@ def test_train_main_help_needs_no_env(
     for name in ("PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR"):
         monkeypatch.delenv(name, raising=False)
     assert cli.train_main(["--help"]) == 0
-    assert capsys.readouterr().out.startswith("usage: pie-train")
+    assert capsys.readouterr().out.startswith("usage: pie train")
 
 
 def test_train_main_fails_fast_on_missing_env(monkeypatch: pytest.MonkeyPatch) -> None:

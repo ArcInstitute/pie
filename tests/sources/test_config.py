@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from hydra.errors import ConfigCompositionException
 from pydantic import ValidationError
 
 from pie.sources.config import compose_sources_config
-from pie.utils import REPO_ROOT
 
 REQUIRED = ["tools=[context_text]", "preprocessed_dirs=[/p/a]", "output_root=/s"]
 
@@ -23,8 +20,7 @@ def test_defaults_are_the_documented_builder_settings() -> None:
         False,
     )
     opts = cfg.options
-    assert opts.contexts_dir == Path("data/sources/contexts")
-    assert opts.resolved().contexts_dir == REPO_ROOT / "data" / "sources" / "contexts"
+    assert "contexts_dir" not in type(opts).model_fields
     assert (opts.on_conflict, opts.cellosaurus_release, opts.offline) == ("error", "56.0", False)
     assert (opts.string_release, opts.device) == ("v12.0", "cuda")
     assert (opts.gene_info, opts.drug_metadata, opts.depmap_csv, opts.pert_output) == (None,) * 4
@@ -41,10 +37,10 @@ def test_unknown_tools_keys_and_the_removed_h5ad_option_fail() -> None:
         compose_sources_config([*REQUIRED, "+options.h5ad={replogle: x}"])
 
 
-def test_mode_defaults_to_build_with_the_shipped_aliases() -> None:
+def test_mode_defaults_to_build_without_extra_aliases() -> None:
     cfg = compose_sources_config(REQUIRED)
     assert cfg.mode == "build"
-    assert (cfg.verify.aliases, cfg.verify.reference) == ("data/sources/aliases.yaml", None)
+    assert (cfg.verify.aliases, cfg.verify.reference) == (None, None)
     assert compose_sources_config([*REQUIRED, "mode=verify"]).mode == "verify"
     with pytest.raises(ValidationError):
         compose_sources_config([*REQUIRED, "mode=nope"])

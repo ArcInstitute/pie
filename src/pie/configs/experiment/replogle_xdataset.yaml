@@ -1,0 +1,48 @@
+# @package _global_
+# Cross-dataset: train on Tahoe, Jiang, ARC VCC 25 and Orion; evaluate best_auprc.ckpt zero-shot on
+# Replogle (test_seen.json, test_unseen.json). Replogle stays first with weight 0 and no training
+# rows: it fixes the gene-axis order and the sorted dataset ids that seed the sampler.
+experiment_name: replogle_xdataset
+
+data:
+  preprocessed_dirs:
+    - hf://datasets/arcinstitute/PIE_replogle_nadig_essential@d4b7b6bbe7ea4fb0ad38cbdec9c4fe7dd223437f/preprocessed
+    - hf://datasets/arcinstitute/PIE_tahoe100m@e57e281af702851aff1415f28a2765060520756a/preprocessed
+    - hf://datasets/arcinstitute/PIE_jiang@2d00d5dfea75ca8be6ba1c9c3cc212c9b232b650/preprocessed
+    - hf://datasets/arcinstitute/PIE_arc_vcc_25@8fcf784b63783dfedebdc78dcf25deaa7361082e/preprocessed
+    - hf://datasets/arcinstitute/PIE_x_atlas_orion@2eed5bcc3c546f9f38844a670f7d331ce1dedd75/preprocessed
+  dataset_weights:
+    replogle: 0.0
+    tahoe: 0.68
+    jiang: 0.01
+    arc_vcc_25: 0.01
+    orion: 0.3
+  split_dir: hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50/replogle_xdataset
+  source_dirs:
+    esm2: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/esm2
+    ncbi_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/ncbi_text
+    string_space: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/string_space
+    depmap_gene_effect: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/depmap_gene_effect
+    context_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/context_text
+    perturbation_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/perturbation_text
+    smiles: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/smiles
+    l1000_tas: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/l1000_tas
+    prism_secondary: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/prism_secondary
+    jump_morphology: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/jump_morphology
+  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/gene_text
+  delta_p:
+    bin_width_fold_change: 1.01
+  evidence:
+    seed: 0
+    chunk: 2048
+
+trainer:
+  devices: 4
+  num_nodes: 2
+  max_steps: 10000
+  accumulate_grad_batches: 1
+
+logger:
+  group: replogle_xdataset
+  tags:
+    - replogle_xdataset

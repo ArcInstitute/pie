@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from tests.conftest import REPO_ROOT
 from tests.sources.inputs import FakeSession
 
 import pie
@@ -17,7 +18,7 @@ from pie.sources.common import (
     input_record,
     provenance_path,
 )
-from pie.utils import REPO_ROOT, sha256_bytes
+from pie.utils import sha256_bytes
 
 URL = "https://x.test/a.txt"
 
@@ -110,6 +111,6 @@ def test_provenance_path_records_no_absolute_path(
 ) -> None:
     monkeypatch.setenv("PIE_DATA_ROOT", str(tmp_path / "data"))
     assert provenance_path(tmp_path / "data" / "sources" / "x") == "${PIE_DATA_ROOT}/sources/x"
-    assert provenance_path(REPO_ROOT / "data" / "sources" / "contexts") == "data/sources/contexts"
+    assert provenance_path(REPO_ROOT / "data" / "sources" / "contexts") == "contexts"
     assert provenance_path(tmp_path / "elsewhere" / "drugs.csv") == "drugs.csv"
     assert provenance_path("${PIE_DATA_ROOT}/y") == "${PIE_DATA_ROOT}/y"

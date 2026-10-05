@@ -9,6 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 import torch
 
+import pie.config as config_mod
 from pie.data.dataset import RowRef
 from pie.data.preprocessed import PreprocessedDir
 from pie.predict import (
@@ -187,3 +188,12 @@ def test_predictions_parquet_is_slim_with_the_gene_axis_in_metadata(tmp_path: Pa
 def test_predictions_parquet_rejects_empty_predictions(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="no prediction blocks"):
         write_predictions_parquet(Predictions(blocks=[]), tmp_path / "p.parquet")
+
+
+def test_checkpoint_with_legacy_split_dir_loads(pipeline: TrainedRun) -> None:
+    ckpt = torch.load(pipeline.ckpt, map_location="cpu", weights_only=False)
+    ckpt["pie"]["config"]["data"]["split_dir"] = "data/splits/replogle_xdataset"
+    legacy = pipeline.run_dir / "legacy.ckpt"
+    torch.save(ckpt, legacy)
+    loaded = load_checkpoint(legacy)
+    assert loaded.config.data.split_dir == f"{config_mod.PIE_SPLITS_URI}/replogle_xdataset"

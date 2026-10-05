@@ -1,4 +1,4 @@
-"""pie-eval: predict a split file with a checkpoint, score the rows, write the metric tables."""
+"""pie eval: predict a split file with a checkpoint, score the rows, write the metric tables."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from pie.assets import resolve_asset
+from pie.assets import resolve_asset, resolve_split_file
 from pie.config import EvalConfig
 from pie.data.preprocessed import PreprocessedDir
 from pie.metrics import METRIC_KEYS, PAIR_METRIC_KEYS, ScoreResult, ScoringInputs, score
@@ -102,7 +102,7 @@ def run_eval(cfg: EvalConfig) -> Path:
     ]
     dirs = {d.dataset: d for d in (PreprocessedDir.open(p) for p in paths)}
 
-    rows = RowSource("split", resolve_path(cfg.split_path))
+    rows = RowSource("split", resolve_split_file(cfg.split_path))
     preds = predict_loaded(loaded, rows, override, cfg.device, cfg.batch_size)
 
     out_dir.mkdir(parents=True, exist_ok=True)

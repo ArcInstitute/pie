@@ -1,4 +1,4 @@
-"""pie-prep: DE label tables plus expression h5ads -> one preprocessed dataset dir.
+"""pie prep: DE label tables plus expression h5ads -> one preprocessed dataset dir.
 
 A label table (CSV or parquet) has one row per (context, perturbation, gene) with an FDR and a
 fold change. The expression h5ads give the pseudobulk means behind delta_p and ctrl_means.
@@ -30,6 +30,7 @@ from numpy.typing import NDArray
 from pie import __version__
 from pie.data import preprocessed as pp
 from pie.prep.config import PrepConfig
+from pie.sources.text.context_file import load_context_file
 from pie.utils import resolve_path
 
 log = logging.getLogger(__name__)
@@ -656,6 +657,15 @@ def _meta(
     )
 
 
+def _context_file(cfg: PrepConfig) -> dict[str, bytes]:
+    """{CONTEXTS_FILE: bytes of cfg.contexts} after validation; {} without a context map."""
+    if cfg.contexts is None:
+        return {}
+    path = resolve_path(cfg.contexts)
+    load_context_file(path)
+    return {pp.CONTEXTS_FILE: path.read_bytes()}
+
+
 def _run_controls_only(cfg: PrepConfig, out: Path, h5ad_files: Sequence[str]) -> Path:
     genes = (
         read_gene_list(resolve_path(cfg.genes))
@@ -675,7 +685,10 @@ def _run_controls_only(cfg: PrepConfig, out: Path, h5ad_files: Sequence[str]) ->
     contexts = sorted(ctrl)
     ctrl_means = np.stack([ctrl[c] for c in contexts]).astype(np.float32)
     meta = _meta(cfg, genes, {c: i for i, c in enumerate(contexts)}, {}, 0, {})
-    return pp.write_preprocessed(out, meta, {pp.CTRL_MEANS: ctrl_means}, overwrite=cfg.overwrite)
+    return pp.write_preprocessed(
+        out, meta, {pp.CTRL_MEANS: ctrl_means}, overwrite=cfg.overwrite,
+        extra_files=_context_file(cfg),
+    )
 
 
 def run_prep(cfg: PrepConfig) -> Path:
@@ -720,4 +733,6 @@ def run_prep(cfg: PrepConfig) -> Path:
         len(perts),
     )
     meta = _meta(cfg, genes, context_to_id, pert_to_id, len(labels.keys), pert_ensembl)
-    return pp.write_preprocessed(out, meta, arrays, overwrite=cfg.overwrite)
+    return pp.write_preprocessed(
+        out, meta, arrays, overwrite=cfg.overwrite, extra_files=_context_file(cfg)
+    )
