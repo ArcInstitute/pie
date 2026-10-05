@@ -583,3 +583,25 @@ def test_eval_train_and_infer_configs_map_legacy_split_paths(
     assert infer.rows_path == f"{uri}/replogle_xdataset/a.json"
     query = config_mod.compose_infer_config([*rows, "rows_kind=query"])
     assert query.rows_path == f"{old}/a.json"
+
+
+def test_resume_keeps_the_previous_aliases_path(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    legacy = "data/sources/aliases.yaml"
+    previous = compose_train_config([*_required(tiny_data), f"data.aliases_path={legacy}"])
+    resumed = compose_train_config(_required(tiny_data))
+    pinned = config_mod.pinned_train_config(resumed, previous=previous)
+    assert pinned.data.aliases_path == legacy
+
+
+def test_saved_legacy_split_dir_that_exists_locally_is_kept(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data" / "splits" / "arcinfra_xdataset").mkdir(parents=True)
+    raw["data"]["split_dir"] = "data/splits/arcinfra_xdataset"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.split_dir == "data/splits/arcinfra_xdataset"

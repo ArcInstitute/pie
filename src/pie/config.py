@@ -130,12 +130,11 @@ def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
     """A saved run config (config.yaml or a checkpoint) with repo-era paths moved to HF.
 
     Runs saved before splits moved to PIE_splits store `data/splits/<rest>`; the same files live
-    at PIE_SPLITS_URI/<rest>, and the train.json sha256 in the data stats still guards them.
+    at PIE_SPLITS_URI/<rest>, and the train.json sha256 in the data stats still guards them. A
+    split dir that still exists locally is kept (legacy_split_path).
     """
     data = dict(raw["data"])
-    split_dir = str(data["split_dir"])
-    if split_dir.startswith(_LEGACY_SPLITS):
-        data["split_dir"] = f"{PIE_SPLITS_URI}/{split_dir.removeprefix(_LEGACY_SPLITS)}"
+    data["split_dir"] = legacy_split_path(str(data["split_dir"]))
     return TrainConfig.model_validate({**raw, "data": data})
 
 
@@ -165,6 +164,10 @@ def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None
         "source_dirs": sources,
         "gene_text_dir": pin(data.gene_text_dir, prior.gene_text_dir if prior else None),
         "split_dir": pin(data.split_dir, prior.split_dir if prior else None),
+        # A run saved before aliases moved into the source dirs keeps its aliases file on resume.
+        "aliases_path": (
+            prior.aliases_path if prior and data.aliases_path is None else data.aliases_path
+        ),
     })})
 
 
