@@ -61,11 +61,11 @@ def as_float32_counts(X: Any) -> CountMatrix:
     """X as float32 CSR or dense; integer dtypes are cast, CSC / other formats / float64 raise."""
     if sp.issparse(X):
         if X.format == "csc":
-            raise ValueError("X is CSC; pie-process needs CSR or dense X (convert with X.tocsr())")
+            raise ValueError("X is CSC; pie process needs CSR or dense X (convert with X.tocsr())")
         if X.format != "csr":
-            raise ValueError(f"X is sparse {X.format!r}; pie-process needs CSR or dense X")
+            raise ValueError(f"X is sparse {X.format!r}; pie process needs CSR or dense X")
     elif not isinstance(X, np.ndarray):
-        raise TypeError(f"X is {type(X).__name__}; pie-process needs CSR or dense X")
+        raise TypeError(f"X is {type(X).__name__}; pie process needs CSR or dense X")
     if np.issubdtype(X.dtype, np.integer):
         return X.astype(np.float32)
     if X.dtype != np.float32:

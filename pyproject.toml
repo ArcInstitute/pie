@@ -84,9 +84,10 @@ pythonpath = ["."]
 addopts = "--import-mode=importlib"
 
 [project.scripts]
-pie-prep = "pie.cli:prep_main"
-pie-train = "pie.cli:train_main"
-pie-eval = "pie.cli:eval_main"
-pie-infer = "pie.cli:infer_main"
-pie-sources = "pie.cli:sources_main"
-pie-process = "pie.cli:process_main"
+pie = "pie.cli:main"
+pie-process = "pie.cli:process_alias"
+pie-prep = "pie.cli:prep_alias"
+pie-sources = "pie.cli:sources_alias"
+pie-train = "pie.cli:train_alias"
+pie-eval = "pie.cli:eval_alias"
+pie-infer = "pie.cli:infer_alias"

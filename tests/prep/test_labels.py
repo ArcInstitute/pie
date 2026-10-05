@@ -542,7 +542,7 @@ def test_prep_main_matches_run_prep(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 @pytest.mark.usefixtures("cli_env")
 def test_prep_main_help_and_bad_values(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert prep_main(["--help"]) == 0
-    assert capsys.readouterr().out.startswith("usage: pie-prep")
+    assert capsys.readouterr().out.startswith("usage: pie prep")
     with pytest.raises(ValidationError):
         prep_main(
             ["dataset=jiang", "labels=/l", "h5ad=/h", "output_dir=/o", "label.fc_space=log10"]

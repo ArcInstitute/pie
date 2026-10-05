@@ -42,7 +42,7 @@ def run_process(cfg: ProcessConfig) -> ProcessOutputs:
     """
     inputs = resolve_inputs(cfg.input)
     stages = [name for name in ("filter", "normalize", "de") if getattr(cfg, name).enabled]
-    logger.info("pie-process: %d input file(s); stages: %s", len(inputs), ", ".join(stages))
+    logger.info("pie process: %d input file(s); stages: %s", len(inputs), ", ".join(stages))
     gpudge = prepare_de(cfg.de) if cfg.de.enabled else None
     planned: list[Path] = []
     if cfg.filter.enabled:
@@ -68,7 +68,7 @@ def run_process(cfg: ProcessConfig) -> ProcessOutputs:
     if cfg.de.enabled:
         de = run_de(counts, cfg.de, cfg.overwrite, gpudge=gpudge)
     logger.info(
-        "pie-process done: %d filtered, %d expression, %d de file(s)",
+        "pie process done: %d filtered, %d expression, %d de file(s)",
         len(filtered),
         len(expression),
         len(de),

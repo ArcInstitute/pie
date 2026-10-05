@@ -25,7 +25,7 @@ def _env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_help_lists_the_datasets(capsys: pytest.CaptureFixture[str]) -> None:
     assert process_main(["--help"]) == 0
     text = capsys.readouterr().out
-    assert text.startswith("usage: pie-process")
+    assert text.startswith("usage: pie process")
     for name in DATASETS:
         assert name in text
 
@@ -80,4 +80,4 @@ def test_process_main_writes_nothing_into_the_working_dir(
 
 def test_console_script_is_registered() -> None:
     meta = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
-    assert meta["project"]["scripts"]["pie-process"] == "pie.cli:process_main"
+    assert meta["project"]["scripts"]["pie-process"] == "pie.cli:process_alias"

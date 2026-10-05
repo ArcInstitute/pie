@@ -109,6 +109,6 @@ def test_env_and_key_are_checked_before_any_tool_runs(
 
 def test_help_and_script_entry(capsys: pytest.CaptureFixture[str]) -> None:
     assert sources_main(["--help"]) == 0
-    assert capsys.readouterr().out.startswith("usage: pie-sources")
+    assert capsys.readouterr().out.startswith("usage: pie sources")
     scripts = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["scripts"]
-    assert scripts["pie-sources"] == "pie.cli:sources_main"
+    assert scripts["pie-sources"] == "pie.cli:sources_alias"
