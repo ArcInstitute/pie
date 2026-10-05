@@ -505,3 +505,18 @@ def test_experiment_overlays_reject_unknown_keys(
     _experiment_roots(tmp_path, monkeypatch)
     with pytest.raises(ValidationError, match="bogus"):
         compose_train_config([f"experiment={experiment}", "+data.bogus=1"])
+
+
+def test_pinned_train_config_pins_the_split_dir(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pie.config as config_mod
+
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.setattr(
+        config_mod, "pin_asset_reference", lambda v: v.replace("@main", "@" + "b" * 40)
+    )
+    uri = "hf://datasets/arcinstitute/PIE_splits@main/exp/fold"
+    cfg = compose_train_config([*_required(tiny_data), f"data.split_dir={uri}"])
+    pinned = config_mod.pinned_train_config(cfg)
+    assert pinned.data.split_dir == f"hf://datasets/arcinstitute/PIE_splits@{'b' * 40}/exp/fold"

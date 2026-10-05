@@ -131,6 +131,7 @@ def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None
         "preprocessed_dirs": dirs,
         "source_dirs": sources,
         "gene_text_dir": pin(data.gene_text_dir, prior.gene_text_dir if prior else None),
+        "split_dir": pin(data.split_dir, prior.split_dir if prior else None),
     })})
 
 

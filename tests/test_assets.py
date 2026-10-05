@@ -363,3 +363,63 @@ def test_training_checkpoint_and_prediction_relocate_remote_assets(
     ))
     assert predictions.is_file()
     assert len(hub.calls) == 6
+
+
+def _splits_uri(rest: str = "exp/fold") -> str:
+    return f"hf://datasets/arcinstitute/PIE_splits@{SHA}/{rest}"
+
+
+def _remote_split_dir(hub: Any, rest: str = "exp/fold") -> None:
+    dest = hub.remote / rest
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "train.json").write_text('{"replogle.k562": ["AAAS"]}')
+    (dest / "test.json").write_text('{"replogle.k562": ["AAMP"]}')
+
+
+def test_resolve_split_dir_downloads_once(hub: Any) -> None:
+    _remote_split_dir(hub)
+    path = assets.resolve_asset(_splits_uri(), kind="splits")
+    assert sorted(p.name for p in path.glob("*.json")) == ["test.json", "train.json"]
+    assert len(hub.calls) == 1
+    assert assets.resolve_asset(_splits_uri(), kind="splits") == path
+    assert len(hub.calls) == 1  # the completion manifest is reused
+
+
+def test_resolve_split_file(hub: Any) -> None:
+    _remote_split_dir(hub)
+    path = assets.resolve_split_file(f"{_splits_uri()}/test.json")
+    assert path.name == "test.json" and path.is_file()
+
+
+def test_split_file_reference_must_name_a_json_file(hub: Any) -> None:
+    with pytest.raises(ValueError, match=r"must name a \.json split file"):
+        assets.resolve_split_file(_splits_uri())
+
+
+def test_missing_split_file_in_downloaded_dir(hub: Any) -> None:
+    _remote_split_dir(hub)
+    with pytest.raises(FileNotFoundError, match=r"val\.json"):
+        assets.resolve_split_file(f"{_splits_uri()}/val.json")
+
+
+def test_invalid_split_json_is_rejected(hub: Any) -> None:
+    dest = hub.remote / "exp" / "bad"
+    dest.mkdir(parents=True)
+    (dest / "train.json").write_text('["not", "a", "mapping"]')
+    with pytest.raises(ValueError):
+        assets.resolve_asset(_splits_uri("exp/bad"), kind="splits")
+
+
+def test_offline_split_dir(hub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    _remote_split_dir(hub)
+    path = assets.resolve_asset(_splits_uri(), kind="splits")
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    assert assets.resolve_asset(_splits_uri(), kind="splits") == path
+    with pytest.raises(FileNotFoundError, match="offline mode"):
+        assets.resolve_asset(_splits_uri("exp/other"), kind="splits")
+
+
+def test_local_split_file_passes_through(tmp_path: Path) -> None:
+    f = tmp_path / "test.json"
+    f.write_text("{}")
+    assert assets.resolve_split_file(f) == f

@@ -271,7 +271,7 @@ class PieDataModule(L.LightningDataModule):
         controls_only = [d.dataset for d in self.dirs if d.controls_only]
         if controls_only:
             raise ValueError(f"controls-only dirs cannot be trained on: {controls_only}")
-        split_dir = resolve_path(self.cfg.split_dir)
+        split_dir = resolve_asset(self.cfg.split_dir, kind="splits")
         train_rows = resolve_split(load_split(split_dir / TRAIN_JSON), self.dirs)
         pct = self.cfg.delta_p.max_delta_percentile
         per_dir = {
@@ -306,7 +306,7 @@ class PieDataModule(L.LightningDataModule):
                 for p in ecfg.preprocessed_dirs
             ]
         )
-        train_path = resolve_path(ecfg.split_dir) / TRAIN_JSON
+        train_path = resolve_asset(ecfg.split_dir, kind="splits") / TRAIN_JSON
         train_sha = sha256_file(train_path)
         if self._stats is not None and train_sha != self._stats.train_json_sha256:
             raise ValueError(
@@ -406,7 +406,7 @@ class PieDataModule(L.LightningDataModule):
             return
         if self._stats is None:
             raise RuntimeError("call setup_stats() before setup('fit')")
-        split_dir = resolve_path(self.cfg.split_dir)
+        split_dir = resolve_asset(self.cfg.split_dir, kind="splits")
         train = load_split(split_dir / TRAIN_JSON)
         val = load_split(split_dir / VAL_JSON)
         check_disjoint({"train": train, "val": val})
