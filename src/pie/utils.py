@@ -23,6 +23,7 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = PACKAGE_DIR / "configs"
 ENV_ROOTS: tuple[str, ...] = ("PIE_DATA_ROOT", "PIE_RUNS_ROOT", "PIE_CACHE_DIR")
 CUBLAS_WORKSPACE = ":4096:8"
+_SECRET_ENV = frozenset({"OPENAI_API_KEY"})  # MissingEnvError never points these at common.sh
 
 _ASSIGN = re.compile(r"^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$")
 _LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -40,8 +41,18 @@ class MissingEnvError(RuntimeError):
 
     def __init__(self, names: list[str]) -> None:
         self.names = list(names)
+        hints = [
+            f"export {name} in your environment; never put it in common.sh"
+            for name in self.names
+            if name in _SECRET_ENV
+        ]
+        if any(name not in _SECRET_ENV for name in self.names):
+            where = "$PIE_ENV_FILE, ./common.sh or ~/.config/pie/common.sh"
+            hints.append(
+                f"export {'the others' if hints else 'them'}, or set them in {where}"
+            )
         super().__init__(
-            f"missing environment variables: {', '.join(self.names)} (set them in common.sh)"
+            f"missing environment variables: {', '.join(self.names)} ({'; '.join(hints)})"
         )
 
 

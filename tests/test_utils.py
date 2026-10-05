@@ -117,7 +117,18 @@ def test_require_env_lists_every_missing_or_empty_name(monkeypatch):
         utils.require_env("PIE_T_A", "PIE_T_B", "PIE_T_D", "PIE_T_C")
     assert info.value.names == ["PIE_T_A", "PIE_T_B", "PIE_T_C"]
     assert str(info.value) == (
-        "missing environment variables: PIE_T_A, PIE_T_B, PIE_T_C (set them in common.sh)"
+        "missing environment variables: PIE_T_A, PIE_T_B, PIE_T_C (export them, or set them in "
+        "$PIE_ENV_FILE, ./common.sh or ~/.config/pie/common.sh)"
+    )
+
+
+def test_missing_api_key_is_never_sent_to_common_sh(monkeypatch):
+    _clear(monkeypatch, "OPENAI_API_KEY")
+    with pytest.raises(utils.MissingEnvError) as info:
+        utils.require_env("OPENAI_API_KEY")
+    assert str(info.value) == (
+        "missing environment variables: OPENAI_API_KEY "
+        "(export OPENAI_API_KEY in your environment; never put it in common.sh)"
     )
 
 
