@@ -284,7 +284,6 @@ def test_to_portable_and_resolve_path_round_trip(monkeypatch, tmp_path):
         data / "preprocessed" / "replogle": "${PIE_DATA_ROOT}/preprocessed/replogle",
         runs / "exp" / "last.ckpt": "${PIE_RUNS_ROOT}/exp/last.ckpt",
         cache: "${PIE_CACHE_DIR}",
-        REPO_ROOT / "data" / "splits" / "train.json": "data/splits/train.json",
     }
     for path, portable in cases.items():
         assert utils.to_portable(path) == portable
@@ -370,3 +369,55 @@ def test_atomic_dir_overwrite_replaces_only_after_success(tmp_path: Path) -> Non
         (tmp / "new.txt").write_text("new")
     assert sorted(p.name for p in final.iterdir()) == ["new.txt"]
     assert sorted(p.name for p in tmp_path.iterdir()) == ["out"]  # no tmp or trash left
+
+
+def test_relative_paths_resolve_against_the_current_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    assert utils.resolve_path("runs/x") == tmp_path / "runs" / "x"
+
+
+def test_to_portable_makes_relative_paths_absolute(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in utils.ENV_ROOTS:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.chdir(tmp_path)
+    assert utils.to_portable("splits/train.json") == str(tmp_path / "splits" / "train.json")
+
+
+def test_common_env_search_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.chdir(work)
+    monkeypatch.delenv("PIE_ENV_FILE", raising=False)
+    assert utils.common_env_candidates() == [
+        work / "common.sh",
+        home / ".config" / "pie" / "common.sh",
+    ]
+    explicit = tmp_path / "env.sh"
+    monkeypatch.setenv("PIE_ENV_FILE", str(explicit))
+    assert utils.common_env_candidates() == [explicit]
+
+
+def test_explicit_env_file_must_exist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PIE_ENV_FILE", str(tmp_path / "missing.sh"))
+    with pytest.raises(FileNotFoundError, match="PIE_ENV_FILE"):
+        utils.load_common_env()
+
+
+def test_first_existing_common_sh_wins(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".config" / "pie").mkdir(parents=True)
+    (home / ".config" / "pie" / "common.sh").write_text("PIE_TEST_VALUE=home\n")
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "common.sh").write_text("PIE_TEST_VALUE=work\n")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.chdir(work)
+    monkeypatch.delenv("PIE_ENV_FILE", raising=False)
+    monkeypatch.delenv("PIE_TEST_VALUE", raising=False)
+    assert utils.load_common_env() == {"PIE_TEST_VALUE": "work"}

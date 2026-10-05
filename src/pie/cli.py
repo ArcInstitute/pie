@@ -16,7 +16,7 @@ usage: pie prep dataset=<name> [label_format=table|pie_process] labels=<glob> h5
 Build one preprocessed dataset dir from DE label tables and expression h5ads. Settings come
 from pie/configs/prep.yaml, pie/configs/prep/dataset/<name>.yaml (obs.* columns, label rewrites) and
 pie/configs/prep/label_format/<name>.yaml (label.* columns; table = PIE label tables, pie_process =
-pie process DE parquets). Relative paths are relative to the repository root.
+pie process DE parquets). Relative paths are relative to the current directory.
 Datasets: arc_vcc_25, jiang, orion, replogle, tahoe.
 """
 
@@ -39,7 +39,7 @@ usage: pie train experiment=<name> [<key>=<value> ...]
 Train PIE from pie/configs/train.yaml plus an experiment overlay
 (pie/configs/experiment/<name>.yaml) and key=value overrides, e.g. vars.fold=k562,
 logger.enabled=false, resume=true or overwrite=true. Relative paths are relative to the
-repository root.
+current directory.
 """
 
 
@@ -61,7 +61,7 @@ usage: pie eval experiment_name=<name> split_path=<split.json> row_set=<name> [<
 Score a checkpoint (ckpt=best_auprc|last) on a split file; writes
 <run_dir>/eval/<row_set>/metrics_<ckpt>.csv and granular_<ckpt>.csv. Settings come from
 pie/configs/eval.yaml; save_predictions=true also writes the predictions, overwrite=true replaces
-existing tables. Relative paths are relative to the repository root.
+existing tables. Relative paths are relative to the current directory.
 """
 
 _INFER_USAGE = """\
@@ -106,7 +106,7 @@ with_deps=false builds only the named tools, prior_root=<dir> extends earlier te
 options.<key>=<value> sets builder settings (depmap_csv, drug_metadata, gene_info, device, ...),
 overwrite=true replaces existing outputs. mode=verify checks <output_root>/<name> for every tool
 against the datasets and, with verify.reference=<dir>, against reference sources.
-Relative paths are relative to the repository root.
+Relative paths are relative to the current directory.
 """
 
 
@@ -154,7 +154,7 @@ Turn raw count h5ads into knockdown-filtered counts (filter), log1p expression h
 the overlay pie/configs/process/dataset/<name>.yaml and key=value overrides such as
 filter.enabled=false, normalize.output_dir=<dir>, de.output_dir=<dir>, de.device=cuda
 or overwrite=true. Every enabled stage needs its output_dir. Relative paths are relative
-to the repository root.
+to the current directory.
 Datasets: arc_vcc_25, jiang, orion, replogle, tahoe.
 The de stage needs the optional extra: uv sync --extra process.
 """

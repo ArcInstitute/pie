@@ -201,6 +201,7 @@ def test_portable_paths_round_trip(
     tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.chdir(REPO_ROOT)
     cfg = compose_train_config(_required(tiny_data))
     portable = portable_train_config(cfg)
     assert portable.run_dir == "${PIE_RUNS_ROOT}/cfg_test"
@@ -211,7 +212,7 @@ def test_portable_paths_round_trip(
     assert portable.data.split_dir == "${PIE_DATA_ROOT}/splits"
     assert portable.data.source_dirs["esm2"] == "${PIE_DATA_ROOT}/sources/esm2"
     assert portable.data.gene_text_dir == "${PIE_DATA_ROOT}/sources/gene_text"
-    assert portable.data.aliases_path == "data/sources/aliases.yaml"
+    assert portable.data.aliases_path == str(REPO_ROOT / "data/sources/aliases.yaml")
     back = resolved_train_config(portable).model_dump()
     assert back["data"]["aliases_path"] == str(REPO_ROOT / "data/sources/aliases.yaml")
     back["data"]["aliases_path"] = cfg.data.aliases_path

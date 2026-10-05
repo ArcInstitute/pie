@@ -106,8 +106,8 @@ def input_record(path: Path, url: str | None, release: str | None = None) -> dic
 def provenance_path(path: Path | str) -> str:
     """A path for a provenance params block, never absolute.
 
-    to_portable's '${NAME}/rel' or repo-relative form; a path outside every env root and the repo
-    is reduced to its file name (its input record keeps the sha256).
+    to_portable's '${NAME}/rel' form; a path outside every env root is reduced to its file name
+    (its input record keeps the sha256).
     """
     portable = to_portable(path)
     return Path(portable).name if Path(portable).is_absolute() else portable

@@ -1,6 +1,6 @@
 # pie-sources: build knowledge sources into <output_root>/<name>/ for the datasets in
 # preprocessed_dirs. `tools` adds and orders dependencies unless with_deps=false. Builder
-# settings live under `options`. Relative paths are relative to the repository root.
+# settings live under `options`. Relative paths are relative to the current directory.
 tools: ???
 with_deps: true
 preprocessed_dirs: ???

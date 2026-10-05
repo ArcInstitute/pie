@@ -27,7 +27,7 @@ class ParquetFrame(Protocol):
 def resolve_inputs(spec: str | Sequence[str]) -> list[Path]:
     """Expand a path or glob (or a list of them) into sorted, existing files with distinct names.
 
-    Relative patterns resolve against the repository root (`pie.utils.resolve_path`).
+    Relative patterns resolve against the current directory (`pie.utils.resolve_path`).
     """
     raw = [spec] if isinstance(spec, str) else list(spec)
     patterns = [str(resolve_path(pattern)) for pattern in raw]
