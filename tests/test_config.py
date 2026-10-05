@@ -617,3 +617,52 @@ def test_saved_legacy_split_dir_that_exists_locally_is_kept(
     raw["data"]["split_dir"] = "data/splits/arcinfra_xdataset"
     cfg = config_mod.load_saved_train_config(raw)
     assert cfg.data.split_dir == "data/splits/arcinfra_xdataset"
+
+
+def _resume_pair(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *requested: str
+) -> tuple[TrainConfig, TrainConfig]:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    lookups: list[str] = []
+    monkeypatch.setattr(config_mod, "pin_asset_reference", lambda v: lookups.append(v) or v)
+    previous = compose_train_config(_required(tiny_data))
+    resumed = compose_train_config([*_required(tiny_data), *requested])
+    return previous, config_mod.pinned_train_config(resumed, previous=previous)
+
+
+def test_resume_keeps_a_saved_local_split_dir(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    hf = f"{config_mod.PIE_SPLITS_URI}/replogle_wdataset/unseen_ctx/k562"
+    previous, pinned = _resume_pair(tiny_data, tmp_path, monkeypatch, f"data.split_dir={hf}")
+    assert pinned.data.split_dir == previous.data.split_dir
+    assert "resume keeps the saved data.split_dir" in caplog.text
+
+
+def test_resume_keeps_saved_local_dataset_and_source_dirs(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hf = "hf://datasets/arcinstitute/PIE_sources@" + "c" * 40
+    previous, pinned = _resume_pair(
+        tiny_data, tmp_path, monkeypatch,
+        f"data.preprocessed_dirs=[{hf}/a,{hf}/b]", f"data.source_dirs.esm2={hf}/esm2",
+        f"data.gene_text_dir={hf}/gene_text",
+    )
+    assert pinned.data.preprocessed_dirs == previous.data.preprocessed_dirs
+    assert pinned.data.source_dirs["esm2"] == previous.data.source_dirs["esm2"]
+    assert pinned.data.gene_text_dir == previous.data.gene_text_dir
+
+
+def test_resume_with_the_same_local_paths_warns_nothing(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    cfg = compose_train_config(_required(tiny_data))
+    saved = config_mod.load_saved_train_config(
+        portable_train_config(cfg).model_dump(mode="json")
+    )
+    pinned = config_mod.pinned_train_config(cfg, previous=saved)
+    assert pinned.data == cfg.data
+    assert "resume keeps the saved" not in caplog.text
