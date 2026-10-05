@@ -7,19 +7,32 @@ Data and Knowledge Sources (🤗 Hugging Face): [PIE collection](https://hugging
 
 ## Installation
 
+### From PyPI
+
+```bash
+pip install arc-pie                 # or: uv tool install arc-pie
+pip install "arc-pie[sources]"      # also the knowledge-source building tools
+pip install "arc-pie[process]"      # also the GPU differential-expression stage (gpudge)
+```
+
+The package is `arc-pie`; the command is `pie`. Python 3.12 is required.
+
+### From source (reproduces the paper environment exactly)
+
 ```bash
 git clone https://github.com/ArcInstitute/pie.git && cd pie
 uv sync --frozen                    # add --extra sources / --extra process as needed
 ```
 
-`uv sync --frozen` reproduces the paper environment exactly. Prefix every command with `uv run`
-(for example `uv run pie train ...`).
+From source, prefix every command with `uv run`; the examples below use this form (for example
+`uv run pie train ...`). With a PyPI install, run the same commands without `uv run`.
 
 ### Settings
 
 PIE reads `WANDB_ENTITY`, `WANDB_PROJECT`, `PIE_DATA_ROOT`, `PIE_RUNS_ROOT` and `PIE_CACHE_DIR`
 from the environment, else from the first of `$PIE_ENV_FILE`, `./common.sh` and
-`~/.config/pie/common.sh`. Copy `common.sh.example` from the repository and fill it in.
+`~/.config/pie/common.sh`. Copy
+[`common.sh.example`](https://github.com/ArcInstitute/pie/blob/main/common.sh.example) and fill it in.
 Set `logger.enabled=false` to train without wandb. Building text embeddings also needs
 `OPENAI_API_KEY`; export it in your own environment, never in `common.sh`.
 Run `pie` to list the commands and `pie <command> --help` for each one.
