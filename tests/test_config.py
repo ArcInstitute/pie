@@ -215,15 +215,27 @@ def test_portable_paths_round_trip(
     assert resolved_train_config(portable).model_dump() == cfg.model_dump()
 
 
-def test_legacy_aliases_path_stays_as_written(
+def test_saved_legacy_aliases_path_uses_the_packaged_table(
     tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
+    monkeypatch.chdir(tmp_path)  # no data/ dir here: the packaged copy must be used
+    raw["data"]["aliases_path"] = "data/sources/aliases.yaml"
+    cfg = config_mod.load_saved_train_config(raw)
+    assert cfg.data.aliases_path == str(config_mod.CURATED_ALIASES_FILE)
+    # Saving the run again writes the portable legacy value, never a site-packages path.
+    assert portable_train_config(cfg).data.aliases_path == "data/sources/aliases.yaml"
+
+
+def test_saved_legacy_aliases_path_that_exists_locally_is_kept(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    raw = _saved(tiny_data, tmp_path, monkeypatch)
     monkeypatch.chdir(tmp_path)
-    legacy = "data/sources/aliases.yaml"
-    cfg = compose_train_config([*_required(tiny_data), f"data.aliases_path={legacy}"])
-    assert portable_train_config(cfg).data.aliases_path == legacy
-    assert resolved_train_config(cfg).data.aliases_path == legacy
+    (tmp_path / "data" / "sources").mkdir(parents=True)
+    (tmp_path / "data" / "sources" / "aliases.yaml").write_text("esm2: {}\n")
+    raw["data"]["aliases_path"] = "data/sources/aliases.yaml"
+    assert config_mod.load_saved_train_config(raw).data.aliases_path == "data/sources/aliases.yaml"
 
 
 def test_extra_aliases_path_is_portable(

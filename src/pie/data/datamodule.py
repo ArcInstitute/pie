@@ -7,7 +7,6 @@ import logging
 import os
 import time
 from collections.abc import Mapping
-from importlib.resources import files
 from pathlib import Path
 from typing import Any, cast
 
@@ -57,7 +56,6 @@ DATA_STATS_FORMAT = 1
 TRAIN_JSON = "train.json"
 VAL_JSON = "val.json"
 _POLL_S = 5.0
-LEGACY_ALIASES_PATH = "data/sources/aliases.yaml"
 # Start of this launch, used when TORCHELASTIC_RUN_ID gives no launch identity: a follower then
 # accepts only a handoff that rank 0 wrote after this launch started. It is kept in the
 # environment so ranks that a launcher starts later as child processes share the same start.
@@ -67,20 +65,12 @@ Pair = tuple[str, str, str]
 
 
 def source_aliases(source_paths: Mapping[str, Path], aliases_path: str | None) -> Aliases:
-    """Each source dir's aliases.yaml, then an optional extra file (old multi-source format).
-
-    Runs saved before aliases moved into the source dirs store LEGACY_ALIASES_PATH; it maps
-    to the packaged copy of that file, so their predictions do not change.
-    """
+    """Each source dir's aliases.yaml, then the optional `aliases_path` file (multi-source
+    format) over them, loaded as given."""
     aliases: Aliases = {name: read_source_aliases(p) for name, p in source_paths.items()}
     if aliases_path is None:
         return aliases
-    extra_path = (
-        Path(str(files("pie.data") / "legacy_aliases.yaml"))
-        if aliases_path == LEGACY_ALIASES_PATH
-        else resolve_path(aliases_path)
-    )
-    for name, table in load_aliases(extra_path).items():
+    for name, table in load_aliases(resolve_path(aliases_path)).items():
         aliases.setdefault(name, {}).update(table)
     return aliases
 

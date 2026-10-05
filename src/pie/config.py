@@ -13,8 +13,9 @@ from typing import Any, Literal
 from pydantic import field_validator
 
 from pie.assets import parse_hf_reference, pin_asset_reference
-from pie.data.datamodule import LEGACY_ALIASES_PATH, DataConfig
+from pie.data.datamodule import DataConfig
 from pie.model.pie import ModelConfig
+from pie.sources.contract import CURATED_ALIASES_FILE
 from pie.utils import StrictModel, compose_config, resolve_path, to_portable
 
 
@@ -97,10 +98,7 @@ def _map_paths(cfg: TrainConfig, convert: Callable[[str], str]) -> TrainConfig:
             "split_dir": convert(data.split_dir),
             "source_dirs": {name: convert(p) for name, p in data.source_dirs.items()},
             "gene_text_dir": convert(data.gene_text_dir),
-            # The legacy literal stays as written, so resume keeps it portable.
-            "aliases_path": (
-                aliases if aliases is None or aliases == LEGACY_ALIASES_PATH else convert(aliases)
-            ),
+            "aliases_path": None if aliases is None else convert(aliases),
         }
     )
     return cfg.model_copy(update={"run_dir": convert(cfg.run_dir), "data": new_data})
@@ -114,6 +112,7 @@ def _resolved(path: str) -> str:
 
 PIE_SPLITS_URI = "hf://datasets/arcinstitute/PIE_splits@396ab9563175ee887750c9eed7ccaea6f5fdbf50"
 _LEGACY_SPLITS = "data/splits/"
+LEGACY_ALIASES_PATH = "data/sources/aliases.yaml"
 
 
 def legacy_split_path(value: str) -> str:
@@ -131,10 +130,15 @@ def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
 
     Runs saved before splits moved to PIE_splits store `data/splits/<rest>`; the same files live
     at PIE_SPLITS_URI/<rest>, and the train.json sha256 in the data stats still guards them. A
-    split dir that still exists locally is kept (legacy_split_path).
+    split dir that still exists locally is kept (legacy_split_path). Runs saved before aliases
+    moved into the source dirs store LEGACY_ALIASES_PATH; when that file is absent it maps to the
+    packaged copy (CURATED_ALIASES_FILE, byte-identical), so their predictions do not change.
     """
     data = dict(raw["data"])
     data["split_dir"] = legacy_split_path(str(data["split_dir"]))
+    aliases = data.get("aliases_path")
+    if aliases == LEGACY_ALIASES_PATH and not resolve_path(aliases).exists():
+        data["aliases_path"] = str(CURATED_ALIASES_FILE)
     return TrainConfig.model_validate({**raw, "data": data})
 
 
@@ -172,8 +176,16 @@ def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None
 
 
 def portable_train_config(cfg: TrainConfig) -> TrainConfig:
-    """Copy with every path rewritten by pie.utils.to_portable ('${PIE_DATA_ROOT}/...')."""
-    return _map_paths(cfg, to_portable)
+    """Copy with every path rewritten by pie.utils.to_portable ('${PIE_DATA_ROOT}/...').
+
+    The packaged curated table that load_saved_train_config substitutes is saved as
+    LEGACY_ALIASES_PATH again, so a resumed old run stays portable.
+    """
+    portable = _map_paths(cfg, to_portable)
+    if cfg.data.aliases_path == str(CURATED_ALIASES_FILE):
+        data = portable.data.model_copy(update={"aliases_path": LEGACY_ALIASES_PATH})
+        portable = portable.model_copy(update={"data": data})
+    return portable
 
 
 def resolved_train_config(cfg: TrainConfig) -> TrainConfig:

@@ -16,7 +16,8 @@ knowledge-source embeddings of the perturbation, context and genes plus pooled t
   (`{"<dataset>.<context>": [perturbation, ...]}`), each dataset's context map in
   `preprocessed/contexts.yaml` (context to Cellosaurus accession, Jiang stimulations) and
   per-source perturbation aliases in `PIE_sources/<name>/aliases.yaml` (used only when a key is
-  missing). `src/pie/data/legacy_aliases.yaml` serves runs saved before aliases moved.
+  missing). `src/pie/sources/curated_aliases.yaml` is the reviewed table: `pie sources` writes
+  each source's entries into its output dir, and runs saved before aliases moved read it.
 - `src/pie/config.py`: strict schema of train/eval/infer (unknown keys are errors); `utils.py`:
   `common.sh` loading, env checks, config composition, logging, determinism, hashing, atomic writes.
 - `src/pie/assets.py`: local/HF asset resolver, revision pinning, selective downloads,
@@ -110,7 +111,8 @@ earlier text sources instead of re-embedding them. `depmap_gene_effect` needs a 
 (`options.depmap_csv`), the chemical sources need `options.drug_metadata`, and `ncbi_text` and
 `esm2` need a GPU (`options.device`, default `cuda`). Context text reads
 `<preprocessed dir>/contexts.yaml`; aliases come from `<source dir>/aliases.yaml`, plus an optional
-extra multi-source file (`verify.aliases`, `data.aliases_path`).
+multi-source file that you pass in the config (`verify.aliases`, `data.aliases_path`), loaded as
+given.
 
 ```bash
 uv run pie sources \

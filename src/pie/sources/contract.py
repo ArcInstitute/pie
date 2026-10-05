@@ -26,6 +26,8 @@ EMBEDDINGS = "embeddings.npy"  # dense (N, D) or token (T, D)
 OFFSETS = "offsets.npy"  # token layout only: (N + 1,) int64, key i = rows offsets[i]:offsets[i+1]
 DESCRIPTIONS = "descriptions.json"  # text sources only: {key: text}, key order = row order
 ALIASES_FILE = "aliases.yaml"  # optional: {key: canonical key}, used only on a direct miss
+# The reviewed aliases per source (multi-source format); write_source ships them with each source.
+CURATED_ALIASES_FILE = Path(__file__).resolve().parent / "curated_aliases.yaml"
 SOURCE_NAMES: tuple[str, ...] = (
     "context_text",
     "perturbation_text",
@@ -221,6 +223,9 @@ def write_source(
             np.save(tmp / OFFSETS, offsets, allow_pickle=False)
         if descriptions is not None:
             write_json(tmp / DESCRIPTIONS, dict(descriptions))
+        aliases = curated_aliases(meta.name)
+        if aliases:
+            OmegaConf.save(OmegaConf.create(aliases), tmp / ALIASES_FILE)
         write_json(tmp / META, meta.model_dump(mode="json"))
     read_source(out)
     return out
@@ -295,6 +300,13 @@ def extend_embeddings(
         row_keys.extend(new_keys)
     embeddings = np.concatenate(blocks, axis=0) if len(blocks) > 1 else np.array(blocks[0])
     return embeddings, row_keys
+
+
+def curated_aliases(name: str) -> dict[str, str]:
+    """The reviewed {key: canonical key} table of source `name` ({} when it has none)."""
+    raw = OmegaConf.to_container(OmegaConf.load(CURATED_ALIASES_FILE), resolve=True)
+    table = raw.get(name) if isinstance(raw, dict) else None
+    return {str(k): str(v) for k, v in (table or {}).items()}
 
 
 def read_source_aliases(path: Path) -> dict[str, str]:

@@ -33,4 +33,4 @@ def test_process_extra_uses_gpudge_from_pypi() -> None:
 def test_packaged_resources() -> None:
     assert (files("pie") / "configs" / "train.yaml").is_file()
     assert (files("pie") / "configs" / "experiment" / "replogle_xdataset.yaml").is_file()
-    assert (files("pie.data") / "legacy_aliases.yaml").is_file()
+    assert (files("pie.sources") / "curated_aliases.yaml").is_file()

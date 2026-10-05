@@ -317,23 +317,14 @@ def test_extra_aliases_file_overrides(tmp_path: Path) -> None:
     }
 
 
-def test_legacy_aliases_path_uses_the_packaged_table(
+def test_an_aliases_file_at_the_old_repo_path_is_used_as_given(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.chdir(tmp_path)  # no data/ dir here: the packaged copy must be used
+    monkeypatch.chdir(tmp_path)
+    custom = tmp_path / "data" / "sources" / "aliases.yaml"
+    custom.parent.mkdir(parents=True)
+    custom.write_text("esm2:\n  TAZ: CUSTOM\n")
     esm2 = tmp_path / "esm2"
     esm2.mkdir()
-    got = datamodule.source_aliases({"esm2": esm2}, datamodule.LEGACY_ALIASES_PATH)
-    assert got["esm2"]["TAZ"] == "TAFAZZIN"
-    assert len(got["esm2"]) == 12
-
-
-def test_packaged_legacy_aliases_table() -> None:
-    from importlib.resources import files
-
-    from pie.data.dataset import load_aliases
-
-    table = load_aliases(Path(str(files("pie.data") / "legacy_aliases.yaml")))
-    assert {name: len(entries) for name, entries in table.items()} == {
-        "esm2": 12, "ncbi_text": 13, "string_space": 0, "depmap_gene_effect": 7}
-    assert table["ncbi_text"]["C16orf74"] == "CLMB"
+    got = datamodule.source_aliases({"esm2": esm2}, "data/sources/aliases.yaml")
+    assert got == {"esm2": {"TAZ": "CUSTOM"}}
