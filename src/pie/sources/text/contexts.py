@@ -9,18 +9,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import requests
-from omegaconf import OmegaConf
-from pydantic import Field
 
+from pie.data.preprocessed import CONTEXTS_FILE
 from pie.sources.text import _http
-from pie.utils import StrictModel, sha256_file, write_json
+from pie.sources.text.context_file import (
+    _ACCESSION,
+    StimulationEntry,
+    load_context_file,
+)
+from pie.utils import sha256_file, write_json
 
 if TYPE_CHECKING:
     from pie.data.preprocessed import PreprocessedDir
 
 RELEASE_URL = "https://api.cellosaurus.org/release-info"
 CELL_LINE_URL = "https://api.cellosaurus.org/cell-line/{accession}?format=json"
-_ACCESSION = re.compile(r"CVCL_[A-Z0-9]{4}", re.ASCII)
 _RELEASE = re.compile(r"[0-9]+(?:\.[0-9]+)*", re.ASCII)
 
 
@@ -594,39 +597,6 @@ class CellosaurusClient:
         }
 
 
-class StimulationEntry(StrictModel):
-    name: str
-    abbreviation: str
-    family: str
-    receptors: list[str]
-    signaling: str
-    description: str
-
-
-class ContextEntry(StrictModel):
-    cellosaurus: str
-    stimulation: str | None = None
-
-
-class ContextFile(StrictModel):
-    contexts: dict[str, ContextEntry]
-    stimulations: dict[str, StimulationEntry] = Field(default_factory=dict)
-
-
-def load_context_file(path: Path) -> ContextFile:
-    """Strict load of data/sources/contexts/<dataset>.yaml (format in the module docs above)."""
-    raw = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
-    parsed = ContextFile.model_validate(raw)
-    for key, entry in parsed.contexts.items():
-        if _ACCESSION.fullmatch(entry.cellosaurus) is None:
-            raise ValueError(f"{path}: context {key!r} has invalid accession {entry.cellosaurus!r}")
-        if entry.stimulation is not None and entry.stimulation not in parsed.stimulations:
-            raise ValueError(
-                f"{path}: context {key!r} names unknown stimulation {entry.stimulation!r}"
-            )
-    return parsed
-
-
 def _stimulation_segments(stimulation: StimulationEntry) -> list[str]:
     scalar = _normalize_value
     name = scalar(stimulation.name)
@@ -652,14 +622,20 @@ def render_context(
 
 
 def describe_contexts(
-    datasets: Sequence[PreprocessedDir], contexts_dir: Path, client: CellosaurusClient
+    datasets: Sequence[PreprocessedDir], client: CellosaurusClient
 ) -> dict[str, str]:
-    """{context: text} for every context of every dataset: datasets in order, keys by sort_key."""
+    """{context: text} for every context of every dataset: datasets in order, keys by sort_key.
+
+    Each dataset's context map is <preprocessed dir>/contexts.yaml.
+    """
     texts: dict[str, str] = {}
     for ds in datasets:
-        path = Path(contexts_dir) / f"{ds.dataset}.yaml"
+        path = ds.path / CONTEXTS_FILE
         if not path.is_file():
-            raise FileNotFoundError(f"no context map for dataset {ds.dataset!r}: {path}")
+            raise FileNotFoundError(
+                f"{ds.path}: no {CONTEXTS_FILE} for dataset {ds.dataset!r}; rebuild the dir with "
+                f"pie prep contexts=<file>, or copy a context map to {path}"
+            )
         mapping = load_context_file(path)
         missing = [key for key in ds.contexts if key not in mapping.contexts]
         if missing:

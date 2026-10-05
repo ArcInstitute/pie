@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 
 import pie
+from pie.data.preprocessed import CONTEXTS_FILE
 from pie.sources.common import provenance_path
 from pie.sources.contract import (
     DESCRIPTIONS,
@@ -138,11 +139,11 @@ def run_context_text(ctx: RunContext) -> Path:
     client = contexts.CellosaurusClient(
         ctx.cache_dir / "context_text", opts.cellosaurus_release, opts.offline
     )
-    described = contexts.describe_contexts(ctx.datasets, opts.contexts_dir, client)
+    described = contexts.describe_contexts(ctx.datasets, client)
     order = ordered_keys(d.contexts for d in ctx.datasets)
     params = {
         "cellosaurus_release": opts.cellosaurus_release,
-        "contexts_dir": provenance_path(opts.contexts_dir),
+        "contexts_sha256": {d.dataset: sha256_file(d.path / CONTEXTS_FILE) for d in ctx.datasets},
     }
     record = client.provenance()
     inputs = {

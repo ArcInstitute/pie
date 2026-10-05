@@ -14,7 +14,6 @@ verify:
   aliases: null  # extra aliases file (multi-source format) over each source's aliases.yaml
 
 options:
-  contexts_dir: data/sources/contexts
   on_conflict: error
   cellosaurus_release: "56.0"
   offline: false

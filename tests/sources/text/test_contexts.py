@@ -280,24 +280,25 @@ def _write_yaml(path: Path, body: dict) -> Path:
 
 
 def _context_dir(tmp_path: Path) -> Path:
-    root = tmp_path / "contexts"
-    root.mkdir()
-    _write_yaml(root / "arc_vcc_25.yaml", {"contexts": {
+    """tmp_path/<dataset>/contexts.yaml for arc_vcc_25 and jiang, as in a preprocessed dir."""
+    (tmp_path / "arc_vcc_25").mkdir()
+    (tmp_path / "jiang").mkdir()
+    _write_yaml(tmp_path / "arc_vcc_25" / "contexts.yaml", {"contexts": {
         "ARC_H1": {"cellosaurus": "CVCL_9771"}, "ARC_H1_VAL": {"cellosaurus": "CVCL_9771"},
     }})
-    _write_yaml(root / "jiang.yaml", {
+    _write_yaml(tmp_path / "jiang" / "contexts.yaml", {
         "contexts": {"bxpc3_ifng": {"cellosaurus": "CVCL_0186", "stimulation": "ifng"}},
         "stimulations": {"ifng": IFNG},
     })
-    return root
+    return tmp_path
 
 
 def test_load_context_file_parses_entries_and_stimulations(tmp_path: Path) -> None:
-    parsed = contexts.load_context_file(_context_dir(tmp_path) / "jiang.yaml")
+    parsed = contexts.load_context_file(_context_dir(tmp_path) / "jiang" / "contexts.yaml")
     assert parsed.contexts["bxpc3_ifng"].cellosaurus == "CVCL_0186"
     assert parsed.contexts["bxpc3_ifng"].stimulation == "ifng"
     assert parsed.stimulations["ifng"].model_dump() == IFNG
-    arc = contexts.load_context_file(tmp_path / "contexts" / "arc_vcc_25.yaml")
+    arc = contexts.load_context_file(tmp_path / "arc_vcc_25" / "contexts.yaml")
     assert list(arc.contexts) == ["ARC_H1", "ARC_H1_VAL"]
     assert arc.stimulations == {}
 
@@ -332,12 +333,15 @@ def test_render_context_omits_parentheses_for_empty_abbreviation() -> None:
 
 
 def test_describe_contexts_orders_by_dataset_then_sort_key(tmp_path: Path) -> None:
+    root = _context_dir(tmp_path)
     datasets = [
-        SimpleNamespace(dataset="arc_vcc_25", contexts=["ARC_H1_VAL", "ARC_H1"]),
-        SimpleNamespace(dataset="jiang", contexts=["bxpc3_ifng"]),
+        SimpleNamespace(
+            dataset="arc_vcc_25", contexts=["ARC_H1_VAL", "ARC_H1"], path=root / "arc_vcc_25"
+        ),
+        SimpleNamespace(dataset="jiang", contexts=["bxpc3_ifng"], path=root / "jiang"),
     ]
     client = _client(_seeded_cache(tmp_path))
-    texts = contexts.describe_contexts(datasets, _context_dir(tmp_path), client)
+    texts = contexts.describe_contexts(datasets, client)
     assert list(texts) == ["ARC_H1", "ARC_H1_VAL", "bxpc3_ifng"]
     assert texts["ARC_H1"] == ARC_H1_TEXT
     assert texts["ARC_H1_VAL"] == ARC_H1_TEXT.replace("ARC_H1 ;", "ARC_H1_VAL ;", 1)
@@ -346,14 +350,31 @@ def test_describe_contexts_orders_by_dataset_then_sort_key(tmp_path: Path) -> No
 
 
 def test_describe_contexts_requires_every_dataset_context(tmp_path: Path) -> None:
-    datasets = [SimpleNamespace(dataset="arc_vcc_25", contexts=["ARC_H1", "ARC_H2"])]
+    root = _context_dir(tmp_path)
+    datasets = [
+        SimpleNamespace(
+            dataset="arc_vcc_25", contexts=["ARC_H1", "ARC_H2"], path=root / "arc_vcc_25"
+        )
+    ]
     with pytest.raises(KeyError, match="ARC_H2"):
         client = _client(_seeded_cache(tmp_path))
-        contexts.describe_contexts(datasets, _context_dir(tmp_path), client)
+        contexts.describe_contexts(datasets, client)
 
 
 def test_describe_contexts_requires_a_context_file(tmp_path: Path) -> None:
-    datasets = [SimpleNamespace(dataset="orion", contexts=["hek293t"])]
-    with pytest.raises(FileNotFoundError, match=r"orion\.yaml"):
+    (tmp_path / "orion").mkdir()
+    datasets = [SimpleNamespace(dataset="orion", contexts=["hek293t"], path=tmp_path / "orion")]
+    with pytest.raises(FileNotFoundError, match=r"contexts\.yaml.*pie prep contexts="):
         client = _client(_seeded_cache(tmp_path))
-        contexts.describe_contexts(datasets, _context_dir(tmp_path), client)
+        contexts.describe_contexts(datasets, client)
+
+
+def test_describe_contexts_reads_each_dataset_dir(tmp_path: Path) -> None:
+    _context_dir(tmp_path)
+    datasets = [
+        SimpleNamespace(dataset="arc_vcc_25", contexts=["ARC_H1"], path=tmp_path / "arc_vcc_25"),
+        SimpleNamespace(dataset="jiang", contexts=["bxpc3_ifng"], path=tmp_path / "jiang"),
+    ]
+    texts = contexts.describe_contexts(datasets, _client(_seeded_cache(tmp_path)))
+    assert texts["ARC_H1"] == ARC_H1_TEXT
+    assert texts["bxpc3_ifng"] == BXPC3_IFNG_TEXT

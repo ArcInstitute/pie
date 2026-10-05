@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 from hydra.errors import ConfigCompositionException
 from pydantic import ValidationError
-from tests.conftest import REPO_ROOT
 
 from pie.sources.config import compose_sources_config
 
@@ -23,8 +20,7 @@ def test_defaults_are_the_documented_builder_settings() -> None:
         False,
     )
     opts = cfg.options
-    assert opts.contexts_dir == Path("data/sources/contexts")
-    assert opts.resolved().contexts_dir == REPO_ROOT / "data" / "sources" / "contexts"
+    assert "contexts_dir" not in type(opts).model_fields
     assert (opts.on_conflict, opts.cellosaurus_release, opts.offline) == ("error", "56.0", False)
     assert (opts.string_release, opts.device) == ("v12.0", "cuda")
     assert (opts.gene_info, opts.drug_metadata, opts.depmap_csv, opts.pert_output) == (None,) * 4

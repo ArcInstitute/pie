@@ -170,7 +170,8 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
             load_split(f)
         return files
     if kind == "preprocessed":
-        from pie.data.preprocessed import ARRAY_DTYPES, PreprocessedDir
+        from pie.data.preprocessed import ARRAY_DTYPES, CONTEXTS_FILE, PreprocessedDir
+        from pie.sources.text.context_file import load_context_file
 
         meta = PreprocessedDir.open(path).meta
         files = [path / "meta.json"]
@@ -188,6 +189,10 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
             if array.shape != shape:
                 raise ValueError(f"{path / name}: shape {array.shape}, expected {shape}")
             files.append(path / name)
+        contexts = path / CONTEXTS_FILE
+        if contexts.is_file():
+            load_context_file(contexts)
+            files.append(contexts)
         return files
     from pie.sources.contract import (
         ALIASES_FILE,

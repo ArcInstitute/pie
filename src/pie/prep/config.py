@@ -56,6 +56,7 @@ class PrepConfig(StrictModel):
     h5ad: str
     output_dir: str
     genes: str | None
+    contexts: str | None
     controls_only: bool
     overwrite: bool
     label: LabelConfig

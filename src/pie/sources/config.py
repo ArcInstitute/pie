@@ -16,7 +16,6 @@ CONFIG_NAME = "sources"
 class SourceOptions(StrictModel):
     """Builder settings shared by the source tools."""
 
-    contexts_dir: Path
     on_conflict: Literal["error", "keep-prior", "replace"]
     cellosaurus_release: str
     offline: bool
@@ -29,7 +28,7 @@ class SourceOptions(StrictModel):
 
     def resolved(self) -> SourceOptions:
         """A copy with every path field through resolve_path."""
-        paths = ("contexts_dir", "gene_info", "drug_metadata", "depmap_csv", "pert_output")
+        paths = ("gene_info", "drug_metadata", "depmap_csv", "pert_output")
         update = {
             name: resolve_path(value)
             for name in paths

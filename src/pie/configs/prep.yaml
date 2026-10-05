@@ -12,6 +12,9 @@ labels: null
 h5ad: ???
 output_dir: ???
 genes: null
+# context -> Cellosaurus map, copied to <output_dir>/contexts.yaml; pie sources needs it to build
+# context_text
+contexts: null
 controls_only: false
 overwrite: false
 

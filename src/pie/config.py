@@ -175,7 +175,7 @@ class EvalConfig(StrictModel):
     experiment_name: str
     run_dir: str
     ckpt: Literal["best_auprc", "last"]
-    split_path: str  # a split file, e.g. data/splits/replogle_xdataset/test_seen.json
+    split_path: str  # a split file: a local path or hf://datasets/.../<dir>/<name>.json
     row_set: str  # output dir name under <run_dir>/eval/
     preprocessed_dirs: list[str] | None  # None = the checkpoint's training dirs
     save_predictions: bool

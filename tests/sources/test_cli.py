@@ -63,7 +63,6 @@ def test_build_orders_dependencies_and_maps_keys(
     assert ctx.out_root == out and ctx.prior_root is None and ctx.overwrite is False
     assert ctx.cache_dir == tmp_path / "cache" / "http"
     assert ctx.options.on_conflict == "keep-prior" and ctx.options.offline
-    assert ctx.options.contexts_dir == REPO_ROOT / "data" / "sources" / "contexts"
     assert json.loads(capsys.readouterr().out) == {n: str(out / n) for n in ("fake_a", "fake_b")}
 
 
