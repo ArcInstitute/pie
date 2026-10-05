@@ -12,10 +12,7 @@ from pie.process.config import DATASETS, ProcessConfig, compose_process_config
 from pie.utils import CONFIG_DIR
 from tests.conftest import REPO_ROOT
 
-GPUDGE_PIN = (
-    "gpudge[fast] @ git+https://github.com/ArcInstitute/gpudge.git"
-    "@bfbde26903b5580a4cf7692985f7b3c20f3bfebd"
-)
+GPUDGE_PIN = "gpudge[fast]>=0.9.1,<0.10"
 OUTS = [
     "filter.output_dir=/o/filtered",
     "normalize.output_dir=/o/expression",
@@ -202,4 +199,4 @@ def test_pyproject_declares_the_process_extra() -> None:
     meta = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())
     assert meta["project"]["optional-dependencies"]["process"] == [GPUDGE_PIN]
     assert meta["tool"]["uv"]["override-dependencies"] == ["torch==2.10.0"]
-    assert meta["tool"]["hatch"]["metadata"]["allow-direct-references"] is True
+    assert "metadata" not in meta["tool"]["hatch"]  # no direct references: PyPI rejects them

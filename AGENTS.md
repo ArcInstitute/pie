@@ -192,6 +192,7 @@ done
 
 - `tests/` mirrors `src/pie/`; tests run on CPU with synthetic fixtures: `uv run pytest -q`.
 - Lint with `uv run ruff check .` (100 columns); type-check with `uv run mypy src`.
-- Direct dependencies are pinned `==` in `pyproject.toml` with `uv.lock` committed (`uv lock`).
+- Direct dependencies use version ranges in `pyproject.toml` (lower bound = the tested version);
+  `uv.lock` holds the exact versions and is committed (`uv lock`).
 - Configs are strict: each value lives once in YAML, and a new key needs a schema field.
 - Never commit machine-specific paths, `common.sh`, API keys or other secrets.

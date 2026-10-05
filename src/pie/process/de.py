@@ -2,7 +2,7 @@
 
 Per context this calls `gpudge.de(adata, ...)` with `groupby`, `reference`, `normalize_target_sum`
 on raw counts, adding `filter_gene_min_cpm_cell=...` when it is set. Every other gpudge parameter
-keeps its default. gpudge 0.7.0 runs on CUDA only (its `de()` raises without a GPU), so the stage
+keeps its default. gpudge runs on CUDA only (its `de()` raises without a GPU), so the stage
 checks for one before any work starts.
 """
 
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 GPUDGE_MISSING = (
     "the de stage needs gpudge, which comes with the optional 'process' extra; "
-    "install it with `uv sync --extra process`"
+    'install it with `pip install "arc-pie[process]"` (or `uv sync --extra process` in a checkout)'
 )
 OUTPUT_COLUMNS: tuple[str, ...] = (
     "target",
