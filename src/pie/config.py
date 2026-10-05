@@ -6,6 +6,7 @@ errors.
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Literal
@@ -17,6 +18,8 @@ from pie.data.datamodule import DataConfig
 from pie.model.pie import ModelConfig
 from pie.sources.contract import CURATED_ALIASES_FILE
 from pie.utils import StrictModel, compose_config, resolve_path, to_portable
+
+log = logging.getLogger(__name__)
 
 
 class TrainerConfig(StrictModel):
@@ -143,31 +146,48 @@ def load_saved_train_config(raw: Mapping[str, Any]) -> TrainConfig:
 
 
 def pinned_train_config(cfg: TrainConfig, *, previous: TrainConfig | None = None) -> TrainConfig:
-    """Pin remote assets for saved configs; resume replays the previous run's commits."""
+    """Pin remote assets for saved configs; resume replays the previous run's data assets.
+
+    On resume every data path (datasets, sources, gene text, splits) is the saved one, local or
+    hf://; a different requested path is logged and ignored. Two HF references to different
+    repos or directories are an error.
+    """
     prior = previous.data if previous is not None else None
 
-    def pin(value: str, old: str | None = None) -> str:
-        if value.startswith("hf://") and old is not None and old.startswith("hf://"):
+    def pin(key: str, value: str, old: str | None = None) -> str:
+        if old is None:
+            return pin_asset_reference(value)
+        if value.startswith("hf://") and old.startswith("hf://"):
             requested, saved = parse_hf_reference(value), parse_hf_reference(old)
             if (requested.repo_id, requested.subdir) != (saved.repo_id, saved.subdir):
                 raise ValueError(f"resume HF asset {value} differs from the saved asset {old}")
             return pin_asset_reference(old)
-        return pin_asset_reference(value)
+        local = not value.startswith("hf://") and not old.startswith("hf://")
+        if local and resolve_path(value) == resolve_path(old):
+            return value
+        # A resumed run continues on its saved data, local or remote, whatever the recipe says now.
+        log.warning("resume keeps the saved data.%s %s; ignoring the requested %s", key, old, value)
+        return pin_asset_reference(old)
 
     data = cfg.data
     dirs = [
-        pin(p, prior.preprocessed_dirs[i] if prior and i < len(prior.preprocessed_dirs) else None)
+        pin(
+            f"preprocessed_dirs[{i}]", p,
+            prior.preprocessed_dirs[i] if prior and i < len(prior.preprocessed_dirs) else None,
+        )
         for i, p in enumerate(data.preprocessed_dirs)
     ]
     sources = {
-        name: pin(p, prior.source_dirs.get(name) if prior else None)
+        name: pin(f"source_dirs.{name}", p, prior.source_dirs.get(name) if prior else None)
         for name, p in data.source_dirs.items()
     }
     return cfg.model_copy(update={"data": data.model_copy(update={
         "preprocessed_dirs": dirs,
         "source_dirs": sources,
-        "gene_text_dir": pin(data.gene_text_dir, prior.gene_text_dir if prior else None),
-        "split_dir": pin(data.split_dir, prior.split_dir if prior else None),
+        "gene_text_dir": pin(
+            "gene_text_dir", data.gene_text_dir, prior.gene_text_dir if prior else None
+        ),
+        "split_dir": pin("split_dir", data.split_dir, prior.split_dir if prior else None),
         # A run saved before aliases moved into the source dirs keeps its aliases file on resume.
         "aliases_path": (
             prior.aliases_path if prior and data.aliases_path is None else data.aliases_path

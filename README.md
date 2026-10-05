@@ -33,6 +33,9 @@ Run `pie` to list the commands and `pie <command> --help` for each one.
   [PIE collection](https://huggingface.co/collections/arcinstitute/pie).
 - **References:** `hf://datasets/<owner>/<repo>[@revision]/<directory>`; mix them freely with
   local paths. Runs and checkpoints record the resolved commit.
+- **Your own splits:** `data.split_dir=<dir>` (local or `hf://`, with `train.json` and
+  `val.json`) for `pie train`; `split_path=<file>` for `pie eval`. A split file maps
+  `<dataset>.<context>` to a list of perturbations.
 - **Cache:** downloads go to `$PIE_DATA_ROOT/hf/`; `HF_HUB_OFFLINE=1` reuses them without
   network. Use `hf auth login` or `HF_TOKEN` if a repository needs a login.
 

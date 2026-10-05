@@ -121,8 +121,10 @@ uv run pie sources \
 `pie train` trains from `train.yaml` plus Hydra overrides (for example
 `experiment=replogle_wdataset vars.fold=k562`). At setup it fits the delta-p grid on the training
 rows, loads or builds the evidence cache and writes `data_stats.json`. A non-empty run dir is an
-error unless you pass `resume=true` (continue from `last.ckpt`) or `overwrite=true`.
-`logger.enabled=false` trains without wandb.
+error unless you pass `resume=true` (continue from `last.ckpt`) or `overwrite=true`; resume keeps
+the run's saved data paths (datasets, sources, splits) and logs any requested path it ignores.
+`data.split_dir=<dir>` (local or `hf://`, holding `train.json` and `val.json`) trains on your own
+splits. `logger.enabled=false` trains without wandb.
 
 `pie eval` scores a checkpoint on a split file and writes `<run_dir>/eval/<row_set>/metrics_<ckpt>.csv`
 (one row per context plus an `all` row) and `granular_<ckpt>.csv` (one row per pair);
