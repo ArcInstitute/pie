@@ -28,23 +28,8 @@ jobs:
           name: dist
           path: dist/
 
-  testpypi:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
   pypi:
-    needs: testpypi
+    needs: build
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
