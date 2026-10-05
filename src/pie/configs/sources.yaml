@@ -11,7 +11,7 @@ mode: build
 
 verify:
   reference: null
-  aliases: data/sources/aliases.yaml
+  aliases: null  # extra aliases file (multi-source format) over each source's aliases.yaml
 
 options:
   contexts_dir: data/sources/contexts

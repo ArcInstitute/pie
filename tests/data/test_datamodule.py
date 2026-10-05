@@ -292,3 +292,48 @@ def test_rows_from_split_and_query(tiny_data: TinyData, tmp_path: Path) -> None:
     sample = dm.make_dataset(queried, "none")[1]
     assert "fold_changes" not in sample
     assert set(sample["source_tokens"]) == {"context_text"}
+
+
+def test_aliases_come_from_source_dirs(tmp_path: Path) -> None:
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    (esm2 / "aliases.yaml").write_text("TAZ: TAFAZZIN\n")
+    ncbi = tmp_path / "ncbi_text"
+    ncbi.mkdir()
+    assert datamodule.source_aliases({"esm2": esm2, "ncbi_text": ncbi}, None) == {
+        "esm2": {"TAZ": "TAFAZZIN"},
+        "ncbi_text": {},
+    }
+
+
+def test_extra_aliases_file_overrides(tmp_path: Path) -> None:
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    (esm2 / "aliases.yaml").write_text("TAZ: TAFAZZIN\n")
+    extra = tmp_path / "extra.yaml"
+    extra.write_text("esm2:\n  TAZ: OTHER\n  ADAL: MAPDA\n")
+    assert datamodule.source_aliases({"esm2": esm2}, str(extra)) == {
+        "esm2": {"TAZ": "OTHER", "ADAL": "MAPDA"}
+    }
+
+
+def test_legacy_aliases_path_uses_the_packaged_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)  # no data/ dir here: the packaged copy must be used
+    esm2 = tmp_path / "esm2"
+    esm2.mkdir()
+    got = datamodule.source_aliases({"esm2": esm2}, datamodule.LEGACY_ALIASES_PATH)
+    assert got["esm2"]["TAZ"] == "TAFAZZIN"
+    assert len(got["esm2"]) == 12
+
+
+def test_packaged_legacy_aliases_table() -> None:
+    from importlib.resources import files
+
+    from pie.data.dataset import load_aliases
+
+    table = load_aliases(Path(str(files("pie.data") / "legacy_aliases.yaml")))
+    assert {name: len(entries) for name, entries in table.items()} == {
+        "esm2": 12, "ncbi_text": 13, "string_space": 0, "depmap_gene_effect": 7}
+    assert table["ncbi_text"]["C16orf74"] == "CLMB"

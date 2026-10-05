@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from pie.sources import contract
 from pie.sources.contract import (
     DESCRIPTIONS,
     EMBEDDINGS,
@@ -424,3 +425,18 @@ def test_extend_embeddings_rejects_token_prior(tmp_path: Path) -> None:
     prior = read_source(write_source(tmp_path / "tok", meta, rand(3, 3, "float16"), offsets))
     with pytest.raises(ValueError, match="dense"):
         extend_embeddings(prior, ["g3"], lambda keys: np.zeros((1, 3), dtype=np.float16))
+
+
+def test_read_source_aliases(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text("TAZ: TAFAZZIN\nADAL: MAPDA\n")
+    assert contract.read_source_aliases(tmp_path) == {"TAZ": "TAFAZZIN", "ADAL": "MAPDA"}
+
+
+def test_read_source_aliases_missing_file(tmp_path: Path) -> None:
+    assert contract.read_source_aliases(tmp_path) == {}
+
+
+def test_read_source_aliases_rejects_non_strings(tmp_path: Path) -> None:
+    (tmp_path / "aliases.yaml").write_text("TAZ: [1, 2]\n")
+    with pytest.raises(ValueError, match="str -> str"):
+        contract.read_source_aliases(tmp_path)

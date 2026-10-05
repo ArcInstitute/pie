@@ -10,7 +10,13 @@ import numpy as np
 
 from pie.data.dataset import load_aliases
 from pie.data.preprocessed import PreprocessedDir
-from pie.sources.contract import DESCRIPTIONS, Source, read_descriptions, read_source
+from pie.sources.contract import (
+    DESCRIPTIONS,
+    Source,
+    read_descriptions,
+    read_source,
+    read_source_aliases,
+)
 
 MISSING_EXAMPLES = 20
 TOKEN_SAMPLE = 256
@@ -147,7 +153,7 @@ def verify_sources(
     diffs: dict[str, dict[str, Any]] = {}
     for name, path in sources.items():
         source = read_source(Path(path))
-        table = aliases.get(source.meta.name, {})
+        table = {**read_source_aliases(Path(path)), **aliases.get(source.meta.name, {})}
         covered[name] = {d.dataset: coverage(source, table, d) for d in preprocessed}
         if reference_root is not None and (Path(reference_root) / name).exists():
             diffs[name] = compare_to_reference(source, read_source(Path(reference_root) / name))

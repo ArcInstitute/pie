@@ -53,11 +53,19 @@ def test_coverage_counts_direct_alias_and_missing_keys(tiny_data: TinyData) -> N
     assert report["reference"] == {}
 
 
-def test_without_aliases_the_alias_hit_is_missing(tiny_data: TinyData) -> None:
+def test_without_aliases_the_alias_hit_is_missing(tiny_data: TinyData, tmp_path: Path) -> None:
+    bare = tmp_path / "esm2"
+    shutil.copytree(tiny_data.sources["esm2"], bare)
+    (bare / "aliases.yaml").unlink()
+    report = verify_sources({"esm2": bare}, _dirs(tiny_data, "alpha"), None, None)
+    assert report["coverage"]["esm2"]["alpha"]["missing_keys"] == ["OLDX"]
+
+
+def test_source_dir_aliases_cover_the_alias_hit(tiny_data: TinyData) -> None:
     report = verify_sources(
         {"esm2": tiny_data.sources["esm2"]}, _dirs(tiny_data, "alpha"), None, None
     )
-    assert report["coverage"]["esm2"]["alpha"]["missing_keys"] == ["OLDX"]
+    assert report["coverage"]["esm2"]["alpha"]["missing_keys"] == []
 
 
 def test_reference_diff_reports_cosines_and_bitwise_rows(

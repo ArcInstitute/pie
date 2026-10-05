@@ -1,4 +1,4 @@
-"""Tracked data files: curated source aliases and context maps."""
+"""Tracked data files: the context maps."""
 
 from __future__ import annotations
 
@@ -6,54 +6,11 @@ from typing import Any
 
 import pytest
 
-from pie.data.dataset import load_aliases
 from pie.sources.text.contexts import load_context_file
 from tests.conftest import REPO_ROOT
 
 SOURCES = REPO_ROOT / "data" / "sources"
 DATASETS = ("replogle", "tahoe", "jiang", "arc_vcc_25", "orion")
-
-EXPECTED_ALIASES = {
-    "esm2": {
-        "TAZ": "TAFAZZIN",
-        "ADAL": "MAPDA",
-        "C15orf48": "COXFA4L3",
-        "C17orf49": "BACC1",
-        "C4orf3": "ARLN",
-        "ILVBL": "HACL2",
-        "MFSD10": "SLC75A1",
-        "SLC22A18": "SLC67A1",
-        "SMIM6": "ERLN",
-        "STK19": "WHR1",
-        "TMEM104": "SLC38A12",
-        "TMEM30B": "CDC50B",
-    },
-    "ncbi_text": {
-        "TAZ": "TAFAZZIN",
-        "ADAL": "MAPDA",
-        "C15orf48": "COXFA4L3",
-        "C16orf74": "CLMB",
-        "C17orf49": "BACC1",
-        "C4orf3": "ARLN",
-        "ILVBL": "HACL2",
-        "MFSD10": "SLC75A1",
-        "SLC22A18": "SLC67A1",
-        "SMIM6": "ERLN",
-        "STK19": "WHR1",
-        "TMEM104": "SLC38A12",
-        "TMEM30B": "CDC50B",
-    },
-    "string_space": {},
-    "depmap_gene_effect": {
-        "TAZ": "TAFAZZIN",
-        "ADAL": "MAPDA",
-        "C17orf49": "BACC1",
-        "C4orf3": "ARLN",
-        "SLC22A18": "SLC67A1",
-        "SMIM6": "ERLN",
-        "STK19": "WHR1",
-    },
-}
 
 REPLOGLE_CONTEXTS = {
     "hepg2": "CVCL_0027", "jurkat": "CVCL_0367", "k562": "CVCL_0004", "rpe1": "CVCL_4388",
@@ -172,15 +129,6 @@ def _expected_contexts(dataset: str) -> dict[str, tuple[str, str | None]]:
 
 def _plain(value: Any) -> Any:
     return value.model_dump() if hasattr(value, "model_dump") else dict(value)
-
-
-def test_aliases_are_the_curated_entries() -> None:
-    aliases = load_aliases(SOURCES / "aliases.yaml")
-    assert aliases == EXPECTED_ALIASES
-    assert list(aliases) == list(EXPECTED_ALIASES)
-    assert {name: len(entries) for name, entries in aliases.items()} == {
-        "esm2": 12, "ncbi_text": 13, "string_space": 0, "depmap_gene_effect": 7,
-    }
 
 
 @pytest.mark.parametrize("dataset", DATASETS)

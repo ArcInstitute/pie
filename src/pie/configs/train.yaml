@@ -17,7 +17,7 @@ data:
   split_dir: ???
   source_dirs: ???
   gene_text_dir: ${oc.env:PIE_DATA_ROOT}/sources/gene_text
-  aliases_path: data/sources/aliases.yaml
+  aliases_path: null  # extra aliases file (multi-source format) over each source's aliases.yaml
   delta_p:
     bin_width_fold_change: ???
   evidence:

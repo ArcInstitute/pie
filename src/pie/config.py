@@ -13,7 +13,7 @@ from typing import Any, Literal
 from pydantic import field_validator
 
 from pie.assets import parse_hf_reference, pin_asset_reference
-from pie.data.datamodule import DataConfig
+from pie.data.datamodule import LEGACY_ALIASES_PATH, DataConfig
 from pie.model.pie import ModelConfig
 from pie.utils import StrictModel, compose_config, resolve_path, to_portable
 
@@ -88,13 +88,17 @@ def compose_train_config(overrides: Sequence[str]) -> TrainConfig:
 
 def _map_paths(cfg: TrainConfig, convert: Callable[[str], str]) -> TrainConfig:
     data = cfg.data
+    aliases = data.aliases_path
     new_data = data.model_copy(
         update={
             "preprocessed_dirs": [convert(p) for p in data.preprocessed_dirs],
             "split_dir": convert(data.split_dir),
             "source_dirs": {name: convert(p) for name, p in data.source_dirs.items()},
             "gene_text_dir": convert(data.gene_text_dir),
-            "aliases_path": convert(data.aliases_path),
+            # The legacy literal stays as written, so resume keeps it portable.
+            "aliases_path": (
+                aliases if aliases is None or aliases == LEGACY_ALIASES_PATH else convert(aliases)
+            ),
         }
     )
     return cfg.model_copy(update={"run_dir": convert(cfg.run_dir), "data": new_data})

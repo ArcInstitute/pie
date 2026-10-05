@@ -7,6 +7,7 @@ import logging
 import os
 import time
 from collections.abc import Mapping
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, cast
 
@@ -20,6 +21,7 @@ from pie.assets import resolve_asset
 from pie.data import samplers
 from pie.data.dataset import (
     LABEL_KINDS,
+    Aliases,
     Batch,
     Labels,
     PieDataset,
@@ -45,7 +47,7 @@ from pie.data.splits import (
     resolve_split,
     split_pairs,
 )
-from pie.sources.contract import SOURCE_NAMES, read_source
+from pie.sources.contract import SOURCE_NAMES, read_source, read_source_aliases
 from pie.utils import StrictModel, read_json, require_env, resolve_path, sha256_file, write_json
 
 log = logging.getLogger(__name__)
@@ -55,12 +57,32 @@ DATA_STATS_FORMAT = 1
 TRAIN_JSON = "train.json"
 VAL_JSON = "val.json"
 _POLL_S = 5.0
+LEGACY_ALIASES_PATH = "data/sources/aliases.yaml"
 # Start of this launch, used when TORCHELASTIC_RUN_ID gives no launch identity: a follower then
 # accepts only a handoff that rank 0 wrote after this launch started. It is kept in the
 # environment so ranks that a launcher starts later as child processes share the same start.
 _LAUNCH_T0 = float(os.environ.setdefault("PIE_LAUNCH_T0", repr(time.time())))
 
 Pair = tuple[str, str, str]
+
+
+def source_aliases(source_paths: Mapping[str, Path], aliases_path: str | None) -> Aliases:
+    """Each source dir's aliases.yaml, then an optional extra file (old multi-source format).
+
+    Runs saved before aliases moved into the source dirs store LEGACY_ALIASES_PATH; it maps
+    to the packaged copy of that file, so their predictions do not change.
+    """
+    aliases: Aliases = {name: read_source_aliases(p) for name, p in source_paths.items()}
+    if aliases_path is None:
+        return aliases
+    extra_path = (
+        Path(str(files("pie.data") / "legacy_aliases.yaml"))
+        if aliases_path == LEGACY_ALIASES_PATH
+        else resolve_path(aliases_path)
+    )
+    for name, table in load_aliases(extra_path).items():
+        aliases.setdefault(name, {}).update(table)
+    return aliases
 
 
 class DataConfig(StrictModel):
@@ -71,7 +93,7 @@ class DataConfig(StrictModel):
     split_dir: str
     source_dirs: dict[str, str]
     gene_text_dir: str
-    aliases_path: str
+    aliases_path: str | None  # an extra multi-source aliases file over each source's aliases.yaml
     delta_p: DeltaPConfig
     evidence: EvidenceConfig
     batch_size: int
@@ -211,12 +233,12 @@ class PieDataModule(L.LightningDataModule):
         self.gene_union_ids = [
             np.asarray([union[gene] for gene in d.genes], dtype=np.int64) for d in self.dirs
         ]
-        sources = {
-            name: read_source(resolve_asset(p, kind="source"))
-            for name, p in cfg.source_dirs.items()
+        source_paths = {
+            name: resolve_asset(p, kind="source") for name, p in cfg.source_dirs.items()
         }
+        sources = {name: read_source(path) for name, path in source_paths.items()}
         self.source_dims = {name: src.meta.dim for name, src in sources.items()}
-        self._lookup = SourceLookup(sources, load_aliases(resolve_path(cfg.aliases_path)))
+        self._lookup = SourceLookup(sources, source_aliases(source_paths, cfg.aliases_path))
         self._gene_text = read_source(resolve_asset(cfg.gene_text_dir, kind="source"))
         if self._gene_text.meta.layout != "dense" or self._gene_text.meta.index != "gene":
             raise ValueError("data.gene_text_dir must be a dense, gene-indexed source")

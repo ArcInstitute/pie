@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
+from omegaconf import OmegaConf
 from pydantic import field_validator
 
 from pie.utils import StrictModel, atomic_dir, write_json
@@ -24,6 +25,7 @@ META = "meta.json"
 EMBEDDINGS = "embeddings.npy"  # dense (N, D) or token (T, D)
 OFFSETS = "offsets.npy"  # token layout only: (N + 1,) int64, key i = rows offsets[i]:offsets[i+1]
 DESCRIPTIONS = "descriptions.json"  # text sources only: {key: text}, key order = row order
+ALIASES_FILE = "aliases.yaml"  # optional: {key: canonical key}, used only on a direct miss
 SOURCE_NAMES: tuple[str, ...] = (
     "context_text",
     "perturbation_text",
@@ -293,3 +295,17 @@ def extend_embeddings(
         row_keys.extend(new_keys)
     embeddings = np.concatenate(blocks, axis=0) if len(blocks) > 1 else np.array(blocks[0])
     return embeddings, row_keys
+
+
+def read_source_aliases(path: Path) -> dict[str, str]:
+    """<source dir>/aliases.yaml as {key: canonical key}; {} when the source has none."""
+    file = Path(path) / ALIASES_FILE
+    if not file.is_file():
+        return {}
+    raw = OmegaConf.to_container(OmegaConf.load(file), resolve=True)
+    table = {} if raw is None else raw
+    if not isinstance(table, dict) or not all(
+        isinstance(k, str) and isinstance(v, str) for k, v in table.items()
+    ):
+        raise ValueError(f"{file}: aliases must map str -> str")
+    return dict(table)

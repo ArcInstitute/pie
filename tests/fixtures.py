@@ -221,7 +221,10 @@ def build_tiny_data(root: Path) -> TinyData:
         ("test.json", TEST_SPLIT),
     ):
         (split_dir / file_name).write_text(json.dumps(split, indent=1) + "\n")
-    aliases = root / "aliases.yaml"
+    for name, entries in ALIASES.items():
+        if entries:
+            OmegaConf.save(OmegaConf.create(entries), sources[name] / "aliases.yaml")
+    aliases = root / "aliases.yaml"  # the same tables in the multi-source format (extra files)
     OmegaConf.save(OmegaConf.create(ALIASES), aliases)
     return TinyData(
         root=root,
@@ -246,7 +249,7 @@ def tiny_data_config(tiny: TinyData, **overrides: Any) -> Any:
         "split_dir": str(tiny.split_dir),
         "source_dirs": {name: str(path) for name, path in tiny.sources.items()},
         "gene_text_dir": str(tiny.gene_text),
-        "aliases_path": str(tiny.aliases),
+        "aliases_path": None,
         "delta_p": DeltaPConfig(bin_width_fold_change=1.5),
         "evidence": EvidenceConfig(seed=0, chunk=2, lfc_clip_percentile=95.0),
         "batch_size": 4,
@@ -320,7 +323,6 @@ def train_overrides(
             accumulate_grad_batches=accumulate_grad_batches,
         ),
         f"data.gene_text_dir='{tiny.gene_text}'",
-        f"data.aliases_path='{tiny.aliases}'",
         "data.batch_size=2",
         "data.num_workers=0",
         "trainer.accelerator=cpu",

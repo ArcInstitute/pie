@@ -189,7 +189,12 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
                 raise ValueError(f"{path / name}: shape {array.shape}, expected {shape}")
             files.append(path / name)
         return files
-    from pie.sources.contract import read_descriptions, read_source
+    from pie.sources.contract import (
+        ALIASES_FILE,
+        read_descriptions,
+        read_source,
+        read_source_aliases,
+    )
 
     source = read_source(path)
     files = [path / "meta.json", path / "embeddings.npy"]
@@ -199,6 +204,10 @@ def _validate_asset(path: Path, kind: AssetKind) -> list[Path]:
     if descriptions.is_file():
         read_descriptions(path)
         files.append(descriptions)
+    aliases = path / ALIASES_FILE
+    if aliases.is_file():
+        read_source_aliases(path)
+        files.append(aliases)
     return files
 
 

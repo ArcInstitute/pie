@@ -26,7 +26,6 @@ from pie.data.datamodule import DataConfig
 from pie.data.evidence import EvidenceConfig
 from pie.model.pie import EvidenceModelConfig, ModelConfig, TemperatureConfig
 from pie.utils import CONFIG_DIR
-from tests.conftest import REPO_ROOT
 from tests.fixtures import TinyData, required_train_overrides, set_run_env
 
 
@@ -87,7 +86,7 @@ def test_required_keys_compose_to_the_shared_recipe(
         "esm2", "ncbi_text", "context_text", "perturbation_text", "smiles",
     ]
     assert cfg.data.gene_text_dir == f"{tiny_data.root}/sources/gene_text"
-    assert cfg.data.aliases_path == "data/sources/aliases.yaml"
+    assert cfg.data.aliases_path is None
     assert cfg.data.delta_p.bin_width_fold_change == 1.5
     assert cfg.data.delta_p.max_delta_percentile == 99.9
     assert cfg.data.delta_p.max_delta is None
@@ -202,7 +201,6 @@ def test_portable_paths_round_trip(
     tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
-    monkeypatch.chdir(REPO_ROOT)
     cfg = compose_train_config(_required(tiny_data))
     portable = portable_train_config(cfg)
     assert portable.run_dir == "${PIE_RUNS_ROOT}/cfg_test"
@@ -213,11 +211,28 @@ def test_portable_paths_round_trip(
     assert portable.data.split_dir == "${PIE_DATA_ROOT}/splits"
     assert portable.data.source_dirs["esm2"] == "${PIE_DATA_ROOT}/sources/esm2"
     assert portable.data.gene_text_dir == "${PIE_DATA_ROOT}/sources/gene_text"
-    assert portable.data.aliases_path == str(REPO_ROOT / "data/sources/aliases.yaml")
-    back = resolved_train_config(portable).model_dump()
-    assert back["data"]["aliases_path"] == str(REPO_ROOT / "data/sources/aliases.yaml")
-    back["data"]["aliases_path"] = cfg.data.aliases_path
-    assert back == cfg.model_dump()
+    assert portable.data.aliases_path is None
+    assert resolved_train_config(portable).model_dump() == cfg.model_dump()
+
+
+def test_legacy_aliases_path_stays_as_written(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    monkeypatch.chdir(tmp_path)
+    legacy = "data/sources/aliases.yaml"
+    cfg = compose_train_config([*_required(tiny_data), f"data.aliases_path={legacy}"])
+    assert portable_train_config(cfg).data.aliases_path == legacy
+    assert resolved_train_config(cfg).data.aliases_path == legacy
+
+
+def test_extra_aliases_path_is_portable(
+    tiny_data: TinyData, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    set_run_env(monkeypatch, tiny_data, tmp_path / "runs")
+    extra = f"{tiny_data.root}/extra.yaml"
+    cfg = compose_train_config([*_required(tiny_data), f"data.aliases_path={extra}"])
+    assert portable_train_config(cfg).data.aliases_path == "${PIE_DATA_ROOT}/extra.yaml"
 
 
 def test_resolve_steps_matches_both_recipes() -> None:
@@ -376,7 +391,7 @@ def _experiment_golden(
             "split_dir": split_dir,
             "source_dirs": {name: f"{_HF_SOURCES}/{name}" for name in sources},
             "gene_text_dir": f"{_HF_SOURCES}/gene_text",
-            "aliases_path": "data/sources/aliases.yaml",
+            "aliases_path": None,
             "delta_p": {
                 "bin_width_fold_change": bin_width,
                 "max_delta_percentile": 99.9,
