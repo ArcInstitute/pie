@@ -71,7 +71,7 @@ def prepare_de(cfg: DEConfig) -> ModuleType:
     device = resolve_device(cfg.device)
     if device != "cuda":
         raise RuntimeError(
-            f"de.device={cfg.device} resolved to {device}, but gpudge 0.7.0 runs on CUDA only; "
+            f"de.device={cfg.device} resolved to {device}, but gpudge runs on CUDA only; "
             "run the de stage on a machine with a CUDA GPU"
         )
     return gpudge

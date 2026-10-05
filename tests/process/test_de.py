@@ -168,7 +168,7 @@ def test_installed_gpudge_matches_the_pin() -> None:
     from gpudge._csr_dense import HAS_NUMBA
     from gpudge._output import DEFAULT_OUTPUT_COLUMNS
 
-    assert gpudge.__version__ == "0.7.0"
+    assert gpudge.__version__ == "0.9.1"
     assert HAS_NUMBA
     assert tuple(DEFAULT_OUTPUT_COLUMNS) == OUTPUT_COLUMNS
     params = inspect.signature(gpudge.de).parameters
@@ -178,7 +178,7 @@ def test_installed_gpudge_matches_the_pin() -> None:
     assert params["epsilon"].default == 1e-9
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="gpudge 0.7.0 needs a CUDA GPU")
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="gpudge needs a CUDA GPU")
 def test_real_gpudge_writes_the_default_columns(tmp_path: Path) -> None:
     pytest.importorskip("gpudge")
     rng = np.random.default_rng(0)
