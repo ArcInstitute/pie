@@ -7,22 +7,13 @@ Data and Knowledge Sources (🤗 Hugging Face): [PIE collection](https://hugging
 
 ## Installation
 
-### From PyPI
-
-```bash
-pip install arc-pie                 # or: uv tool install arc-pie
-pip install "arc-pie[sources]"      # also the knowledge-source building tools
-pip install "arc-pie[process]"      # also the GPU differential-expression stage (gpudge)
-```
-
-### From source (reproduces the paper environment exactly)
-
 ```bash
 git clone https://github.com/ArcInstitute/pie.git && cd pie
 uv sync --frozen                    # add --extra sources / --extra process as needed
 ```
 
-From source, prefix every command with `uv run` (for example `uv run pie train ...`).
+`uv sync --frozen` reproduces the paper environment exactly. Prefix every command with `uv run`
+(for example `uv run pie train ...`).
 
 ### Settings
 
