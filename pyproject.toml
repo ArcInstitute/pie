@@ -1,6 +1,6 @@
 [project]
 name = "arc-pie"
-version = "0.1.4"
+version = "0.1.5"
 description = "PIE: predicting transcriptional responses to perturbations from biological knowledge sources"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
