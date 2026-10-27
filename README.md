@@ -139,6 +139,9 @@ for rows in test_seen test_unseen; do
 done
 ```
 
+The same recipes exist for the other datasets: `jiang_wdataset`, `tahoe_wdataset`,
+`jiang_xdataset`, `orion_xdataset` and `arc_vcc_25_xdataset` (see [AGENTS.md](AGENTS.md)).
+
 ## License
 
 PIE is released under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0

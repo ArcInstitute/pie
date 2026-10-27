@@ -340,6 +340,27 @@ _HF_SOURCES = "hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cd
 _XDATASET_WEIGHTS = {
     "replogle": 0.0, "tahoe": 0.68, "jiang": 0.01, "arc_vcc_25": 0.01, "orion": 0.3,
 }
+# The Jiang, Tahoe, Orion and ARC VCC 25 splits were added to PIE_splits after PIE_SPLITS_URI.
+_HF_SPLITS = "hf://datasets/arcinstitute/PIE_splits@02c9ca5806b09c74e9d18107b35664a0ea407111"
+_JIANG_FOLDS = ("a549", "bxpc3", "hap1", "ht29", "k562", "mcf7")
+_TAHOE_SOURCES = (
+    "context_text", "perturbation_text", "smiles", "l1000_tas", "prism_secondary",
+    "jump_morphology",
+)
+_HELDOUT_WEIGHTS = {
+    "jiang": {
+        "replogle": 0.15, "tahoe": 0.583838, "jiang": 0.0, "arc_vcc_25": 0.008586,
+        "orion": 0.257576,
+    },
+    "orion": {
+        "replogle": 0.15, "tahoe": 0.825714, "jiang": 0.012143, "arc_vcc_25": 0.012143,
+        "orion": 0.0,
+    },
+    "arc_vcc_25": {
+        "replogle": 0.15, "tahoe": 0.583838, "jiang": 0.008586, "arc_vcc_25": 0.0,
+        "orion": 0.257576,
+    },
+}
 _EXPERIMENT_MODEL = {
     "d_model": 768,
     "n_latents": 512,
@@ -489,6 +510,80 @@ def test_experiment_xdataset_matches_the_reference_recipe(
     assert list(cfg.data.dataset_weights) == list(_XDATASET_DATASETS)
 
 
+@pytest.mark.parametrize("fold", _JIANG_FOLDS)
+def test_experiment_jiang_wdataset_matches_the_reference_recipe(
+    fold: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, runs_root = _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=jiang_wdataset", f"vars.fold={fold}"])
+    assert cfg.model_dump(mode="json") == _experiment_golden(
+        data_root,
+        runs_root,
+        experiment_name=f"jiang_wdataset/{fold}",
+        vars_={"fold": fold},
+        datasets=("jiang",),
+        weights=None,
+        split_dir=f"{_HF_SPLITS}/jiang_wdataset/unseen_ctx/{fold}",
+        sources=_WDATASET_SOURCES,
+        bin_width=1.01,
+        evidence=(42, 128),
+        trainer=(2, 1, 5000, 4),
+        group="jiang_wdataset",
+        tags=["jiang_wdataset", fold],
+    )
+
+
+def test_experiment_tahoe_wdataset_matches_the_reference_recipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, runs_root = _experiment_roots(tmp_path, monkeypatch)
+    cfg = compose_train_config(["experiment=tahoe_wdataset"])
+    assert cfg.model_dump(mode="json") == _experiment_golden(
+        data_root,
+        runs_root,
+        experiment_name="tahoe_wdataset",
+        vars_={},
+        datasets=("tahoe",),
+        weights=None,
+        split_dir=f"{_HF_SPLITS}/tahoe_wdataset/unseen_ctx",
+        sources=_TAHOE_SOURCES,
+        bin_width=1.1,
+        evidence=(42, 128),
+        trainer=(2, 1, 5000, 4),
+        group="tahoe_wdataset",
+        tags=["tahoe_wdataset"],
+    )
+    assert list(cfg.data.source_dirs) == list(_TAHOE_SOURCES)
+
+
+@pytest.mark.parametrize("held_out", sorted(_HELDOUT_WEIGHTS))
+def test_experiment_heldout_xdataset_matches_the_reference_recipe(
+    held_out: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_root, runs_root = _experiment_roots(tmp_path, monkeypatch)
+    name = f"{held_out}_xdataset"
+    cfg = compose_train_config([f"experiment={name}"])
+    assert cfg.model_dump(mode="json") == _experiment_golden(
+        data_root,
+        runs_root,
+        experiment_name=name,
+        vars_={},
+        datasets=_XDATASET_DATASETS,
+        weights=_HELDOUT_WEIGHTS[held_out],
+        split_dir=f"{_HF_SPLITS}/{name}",
+        sources=_XDATASET_SOURCES,
+        bin_width=1.01,
+        evidence=(0, 2048),
+        trainer=(4, 2, 10000, 1),
+        group=name,
+        tags=[name],
+    )
+    assert list(cfg.data.source_dirs) == list(_XDATASET_SOURCES)
+    assert cfg.data.dataset_weights is not None
+    assert list(cfg.data.dataset_weights) == list(_XDATASET_DATASETS)
+    assert sum(cfg.data.dataset_weights.values()) == pytest.approx(1.0, abs=1e-5)
+
+
 def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _experiment_roots(tmp_path, monkeypatch)
     cfg = compose_train_config(["experiment=replogle_xdataset"])
@@ -502,7 +597,18 @@ def test_xdataset_dataset_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert sorted(cfg.data.dataset_weights or {}) == sorted(names)
 
 
-@pytest.mark.parametrize("experiment", ["replogle_wdataset", "replogle_xdataset"])
+@pytest.mark.parametrize(
+    "experiment",
+    [
+        "replogle_wdataset",
+        "replogle_xdataset",
+        "jiang_wdataset",
+        "tahoe_wdataset",
+        "jiang_xdataset",
+        "orion_xdataset",
+        "arc_vcc_25_xdataset",
+    ],
+)
 def test_experiment_overlays_reject_unknown_keys(
     experiment: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

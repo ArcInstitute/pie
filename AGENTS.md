@@ -9,7 +9,7 @@ knowledge-source embeddings of the perturbation, context and genes plus pooled t
 
 - `src/pie/configs/`: Hydra configs shipped in the package, one per command (`process.yaml`, `prep.yaml`, `sources.yaml`, `train.yaml`,
   `eval.yaml`, `infer.yaml`), overlays in `process/dataset/`, `prep/dataset/`, `prep/label_format/`
-  and `experiment/` (the two canonical experiments).
+  and `experiment/` (the canonical experiments).
 - `src/pie/cli.py`: the `pie <command>` entry point (`process`, `prep`, `sources`, `train`, `eval`,
   `infer`); the old `pie-<command>` scripts remain as deprecated aliases.
 - On HF, not in the repo: split files in `arcinstitute/PIE_splits`
@@ -203,6 +203,15 @@ for rows in test_seen test_unseen; do
     split_path=$SPLITS/replogle_xdataset/$rows.json row_set=$rows
 done
 ```
+
+**Other datasets**: the same two recipes for the other datasets, with splits in
+`PIE_splits@02c9ca5806b09c74e9d18107b35664a0ea407111` and the hardware of the Replogle recipe.
+`jiang_wdataset` has six folds (`vars.fold`: a549, bxpc3, hap1, ht29, k562, mcf7; each holds out
+the five stimulus contexts of one line) and `tahoe_wdataset` one fold (test files under
+`tahoe_wdataset/<setting>/test.json`); both test the three within-dataset settings and
+`tahoe_wdataset` uses only the small-molecule sources. `jiang_xdataset`, `orion_xdataset` and
+`arc_vcc_25_xdataset` hold out the named dataset (weight 0) and train on the other four; they test
+`test_seen` and `test_unseen` like `replogle_xdataset`.
 
 ## Conventions
 
