@@ -1,0 +1,36 @@
+# @package _global_
+# Within-dataset Tahoe-100M, one fold: train and validate on 45 cell lines and 265 molecules at all
+# three doses, then evaluate best_auprc.ckpt on the three test sets (unseen_ctx, unseen_pert,
+# unseen_ctx_pert). train.json and val.json are the same in all three setting dirs. Only the
+# small-molecule sources describe the perturbations.
+experiment_name: tahoe_wdataset
+
+data:
+  preprocessed_dirs:
+    - hf://datasets/arcinstitute/PIE_tahoe100m@e57e281af702851aff1415f28a2765060520756a/preprocessed
+  dataset_weights: null
+  split_dir: hf://datasets/arcinstitute/PIE_splits@02c9ca5806b09c74e9d18107b35664a0ea407111/tahoe_wdataset/unseen_ctx
+  source_dirs:
+    context_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/context_text
+    perturbation_text: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/perturbation_text
+    smiles: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/smiles
+    l1000_tas: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/l1000_tas
+    prism_secondary: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/prism_secondary
+    jump_morphology: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/jump_morphology
+  gene_text_dir: hf://datasets/arcinstitute/PIE_sources@fb624a5158a7f37dfa13a015cdacadb985549d26/gene_text
+  delta_p:
+    bin_width_fold_change: 1.1
+  evidence:
+    seed: 42
+    chunk: 128
+
+trainer:
+  devices: 2
+  num_nodes: 1
+  max_steps: 5000
+  accumulate_grad_batches: 4
+
+logger:
+  group: tahoe_wdataset
+  tags:
+    - tahoe_wdataset
