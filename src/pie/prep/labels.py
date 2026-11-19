@@ -434,7 +434,7 @@ def read_labels(label_files: Sequence[str], cfg: PrepConfig, genes: Sequence[str
             chunk["gene_idx"] = chunk["gene_symbol"].map(gene_to_idx)
             frame = chunk[chunk["gene_idx"].notna()].copy()
             frame["gene_idx"] = frame["gene_idx"].astype(int)
-            for (ctx, pert), group in frame.groupby(["context", "pert"]):
+            for (ctx, pert), group in frame.groupby(["context", "pert"], observed=True):
                 key = (str(ctx), str(pert))
                 if key not in local:
                     local[key] = len(local)
