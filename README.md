@@ -18,7 +18,7 @@ pip install "arc-pie[process]"            # with the GPU differential-expression
 pip install "arc-pie[all]"                # with every extra
 ```
 
-The package is `arc-pie`; the command is `pie`. Python 3.12 is required.
+The package is `arc-pie`; the command is `pie`. Python 3.12 or 3.13 is required.
 
 ### From source (reproduces the paper environment exactly)
 
